@@ -243,7 +243,7 @@ class RasterTracer:
         self.map_canvas = self.iface.mapCanvas()
         #layer = QgsProject.instance().mapLayersByName('topomap')[0]
         vlayer = self.iface.layerTreeView().selectedLayers()[0]
-        self.tool_identify = PointTool(self.map_canvas, vlayer, self.iface, self.dockwidget)
+        self.tool_identify = PointTool(self.map_canvas, vlayer, self.iface, self.turn_off_snap)
         self.map_canvas.setMapTool(self.tool_identify)
 
         excluded_layers = [l for l in QgsProject().instance().mapLayers().values() if isinstance(l, QgsVectorLayer)]
@@ -267,6 +267,8 @@ class RasterTracer:
             self.dockwidget.mQgsSpinBox.setEnabled(False)
             self.tool_identify.snap_tolerance_changed(None)
 
+    def turn_off_snap(self):
+        self.dockwidget.checkBoxSnap.nextCheckState()
 
     def checkBoxColor_changed(self):
         if self.dockwidget.checkBoxColor.isChecked():

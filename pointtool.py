@@ -18,12 +18,13 @@ class OutsideMapError(Exception):
 
 class PointTool(QgsMapToolEdit):
 
-    def __init__(self, canvas,vlayer,iface,dockwidget):
+    def __init__(self, canvas, vlayer, iface, turn_off_snap):
         self.last_mouse_event_pos = None
         self.iface = iface
         self.anchor_points = []
         self.anchor_points_ij = []
         self.is_tracing = True
+        self.turn_off_snap = turn_off_snap
 
         # possible variants: gray_diff, as_is, color_diff (using v from hsv)
         self.grid_conversion = "gray_diff"
@@ -44,6 +45,10 @@ class PointTool(QgsMapToolEdit):
 
     def snap_tolerance_changed(self, snap_tolerance):
         self.snap_tolerance = snap_tolerance
+        if snap_tolerance is None:
+            self.marker_snap.hide()
+        else:
+            self.marker_snap.show()
 
     def trace_color_changed(self, color):
         r,g,b = self.sample 
@@ -53,7 +58,6 @@ class PointTool(QgsMapToolEdit):
         else:
             r0,g0,b0,t = color.getRgb()
             self.grid_changed = np.abs( (r0-r)**2 + (g0-g)**2 + (b0-b)**2 )
-
 
 
     def raster_layer_has_changed(self, raster_layer):
@@ -77,7 +81,7 @@ class PointTool(QgsMapToolEdit):
 
     def keyPressEvent(self, e):
         # delete last segment if backspace is pressed
-        if e.key() == Qt.Key_Backspace:
+        if e.key() == Qt.Key_Backspace or e.key() == Qt.Key_B:
             # check if we have at least one feature to delete
             if self.vlayer.featureCount() < 1: return 
 
@@ -94,27 +98,27 @@ class PointTool(QgsMapToolEdit):
                 self.anchor_points_ij.pop()
 
             self.update_rubber_band()
-            # If caching is enabled, a simple canvas refresh might not be sufficient
-            # to trigger a redraw and you must clear the cached image for the layer
-            if self.iface.mapCanvas().isCachingEnabled():
-                self.vlayer.triggerRepaint()
-            else:
-                self.iface.mapCanvas().refresh()
+            self.redraw()
 
         elif e.key() == Qt.Key_A:
             self.is_tracing = not self.is_tracing
             self.update_rubber_band()
+        elif e.key() == Qt.Key_S:
+            self.turn_off_snap()
+
+
 
     def snap(self, i, j):
         if self.snap_tolerance is None: return i,j
-
-        size_i, size_j = self.grid.shape
-        if i<0 or j<0 or i>size_i or j>size_j:
-            raise OutsideMapError
-
+        if not self.is_tracing: return i,j
         if self.grid_changed is None: return i,j
 
+        size_i, size_j = self.grid.shape
         size = self.snap_tolerance
+
+        if i<size or j<size or i+size>size_i or j+size>size_j:
+            raise OutsideMapError
+
         grid_small = self.grid_changed
         grid_small = grid_small[ i-size : i+size, j-size : j+size ] 
 
@@ -192,13 +196,7 @@ class PointTool(QgsMapToolEdit):
             path_ref = [(x0,y0),  (x1,y1)]
 
         add_features_to_vlayer(self.vlayer, path_ref)
-
-        # If caching is enabled, a simple canvas refresh might not be sufficient
-        # to trigger a redraw and you must clear the cached image for the layer
-        if self.iface.mapCanvas().isCachingEnabled():
-            self.vlayer.triggerRepaint()
-        else:
-            self.iface.mapCanvas().refresh()
+        self.redraw()
 
 
     def update_rubber_band(self):
@@ -234,17 +232,21 @@ class PointTool(QgsMapToolEdit):
             x1, y1 = get_coords_from_raster_indxs(self.geo_ref, i1, j1) 
             self.marker_snap.setCenter(QgsPointXY(x1,y1))
 
+        # we need at least one point to draw
+        if len(self.anchor_points) < 1: 
+            self.redraw()
+            return 
+
+        self.update_rubber_band()
+        self.redraw()
+
+    def redraw(self):
         # If caching is enabled, a simple canvas refresh might not be sufficient
         # to trigger a redraw and you must clear the cached image for the layer
         if self.iface.mapCanvas().isCachingEnabled():
             self.vlayer.triggerRepaint()
         else:
             self.iface.mapCanvas().refresh()
-
-        # we need at least one point to draw
-        if len(self.anchor_points) < 1: return 
-
-        self.update_rubber_band()
 
 
 
