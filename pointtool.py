@@ -19,6 +19,7 @@ class PointTool(QgsMapToolEdit):
         self.last_mouse_event_pos = None
         self.iface = iface
         self.anchor_points = []
+        self.anchor_points_ij = []
         self.is_tracing = True
 
         # possible variants: gray_diff, as_is, color_diff (using v from hsv)
@@ -97,7 +98,31 @@ class PointTool(QgsMapToolEdit):
         elif e.key() == Qt.Key_A:
             self.is_tracing = not self.is_tracing
             self.update_rubber_band()
-            
+
+    def snap(self, i, j):
+        if self.snap_tolerance is None: return i,j
+        if self.grid_changed is None: return i,j
+
+        size = self.snap_tolerance
+        grid_small = self.grid_changed
+        grid_small = grid_small[ i-size : i+size, j-size : j+size ] 
+
+        smallest_cells = np.where(grid_small == np.amin(grid_small))
+        coordinates = list(zip(smallest_cells[0], smallest_cells[1]))
+
+        if len(coordinates) == 1:
+            delta_i, delta_j = coordinates[0]
+            delta_i -= size
+            delta_j -= size
+        else:
+            # find the closest to the center
+            deltas = [(i-size, j-size) for i,j in coordinates]
+            lengths = [(i**2 + j**2) for i,j in deltas]
+            i = lengths.index(min(lengths))
+            delta_i, delta_j = deltas[i]
+
+        return i+delta_i, j+delta_j
+
 
     def canvasReleaseEvent(self, mouseEvent):
         if self.rlayer is None:
@@ -117,9 +142,11 @@ class PointTool(QgsMapToolEdit):
             return
 
         qgsPoint = self.toMapCoordinates(mouseEvent.pos())
-        x1,y1 = qgsPoint.x(), qgsPoint.y()
-
+        x1, y1 = qgsPoint.x(), qgsPoint.y()
         self.anchor_points.append((x1,y1))
+        i, j = get_indxs_from_raster_coords(self.geo_ref, x1, y1)
+        i1, j1 = self.snap(i, j)
+        self.anchor_points_ij.append((i1,j1))
         marker = QgsVertexMarker(self.canvas())
         marker.setCenter(QgsPointXY(x1,y1))
         self.markers.append(marker)
@@ -127,30 +154,26 @@ class PointTool(QgsMapToolEdit):
         # we need at least two points to draw
         if len(self.anchor_points)<2: return 
 
-        i1, j1 = get_indxs_from_raster_coords(self.geo_ref, x1, y1)
-        if self.grid_changed is None:
-            r, g, b, = self.sample
-            r0 = r[i1,j1]
-            g0 = g[i1,j1]
-            b0 = b[i1,j1]
-            grid = np.abs( (r0-r)**2 + (g0-g)**2 + (b0-b)**2 )
-        else:
-            grid = self.grid_changed
-
-        x0, y0 = self.anchor_points[-2]
-        i0, j0 = get_indxs_from_raster_coords(self.geo_ref, x0, y0)
-        i1, j1 = get_indxs_from_raster_coords(self.geo_ref, x1, y1)
-
-        start_point = i0, j0
-        end_point = i1, j1
-
         if self.is_tracing:
+            if self.grid_changed is None:
+                r, g, b, = self.sample
+                r0 = r[i1,j1]
+                g0 = g[i1,j1]
+                b0 = b[i1,j1]
+                grid = np.abs( (r0-r)**2 + (g0-g)**2 + (b0-b)**2 )
+            else:
+                grid = self.grid_changed
+            i0, j0 = self.anchor_points_ij[-2]
+            start_point = i0, j0
+            end_point = i1, j1
+
             path = find_path(grid.astype(np.dtype('l')), start_point, end_point)
             path = smooth(path, size=5)
             path = simplify(path)
             path_ref = [get_coords_from_raster_indxs(self.geo_ref, i, j) 
                                                                 for i,j in path]
         else:
+            x0, y0 = self.anchor_points[-2]
             path_ref = [(x0,y0),  (x1,y1)]
 
         add_features_to_vlayer(self.vlayer, path_ref)
