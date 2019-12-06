@@ -13,6 +13,9 @@ import matplotlib.pyplot as plt
 from .astar import find_path
 from .line_simplification import smooth, simplify
 
+class OutsideMapError(Exception):
+    pass
+
 class PointTool(QgsMapToolEdit):
 
     def __init__(self, canvas,vlayer,iface,dockwidget):
@@ -88,6 +91,7 @@ class PointTool(QgsMapToolEdit):
             # remove last anchor
             if len(self.anchor_points)>0: 
                 self.anchor_points.pop()
+                self.anchor_points_ij.pop()
 
             self.update_rubber_band()
             # If caching is enabled, a simple canvas refresh might not be sufficient
@@ -103,6 +107,11 @@ class PointTool(QgsMapToolEdit):
 
     def snap(self, i, j):
         if self.snap_tolerance is None: return i,j
+
+        size_i, size_j = self.grid.shape
+        if i<0 or j<0 or i>size_i or j>size_j:
+            raise OutsideMapError
+
         if self.grid_changed is None: return i,j
 
         size = self.snap_tolerance
@@ -145,9 +154,13 @@ class PointTool(QgsMapToolEdit):
 
         qgsPoint = self.toMapCoordinates(mouseEvent.pos())
         x1, y1 = qgsPoint.x(), qgsPoint.y()
-        self.anchor_points.append((x1,y1))
         i, j = get_indxs_from_raster_coords(self.geo_ref, x1, y1)
-        i1, j1 = self.snap(i, j)
+        try:
+            i1, j1 = self.snap(i, j)
+        except OutsideMapError:
+            return
+        x1, y1 = get_coords_from_raster_indxs(self.geo_ref, i1, j1) 
+        self.anchor_points.append((x1,y1))
         self.anchor_points_ij.append((i1,j1))
         marker = QgsVertexMarker(self.canvas())
         marker.setCenter(QgsPointXY(x1,y1))
@@ -187,14 +200,6 @@ class PointTool(QgsMapToolEdit):
         else:
             self.iface.mapCanvas().refresh()
 
-        #size = 20
-        #grid_small = grid[ i1-size : i1+size, j1-size : j1+size ] 
-        #grid2_small = self.grid[ i1-size : i1+size, j1-size : j1+size ] 
-        #plt.subplot(1,2,1)
-        #plt.imshow(grid_small, cmap='gray')
-        #plt.subplot(1,2,2)
-        #plt.imshow(grid2_small, cmap='gray')
-        #plt.show()
 
     def update_rubber_band(self):
         # this is very ugly but I can't make another way
@@ -222,7 +227,10 @@ class PointTool(QgsMapToolEdit):
             qgsPoint = self.toMapCoordinates(mouseEvent.pos())
             x1, y1 = qgsPoint.x(), qgsPoint.y()
             i, j = get_indxs_from_raster_coords(self.geo_ref, x1, y1)
-            i1, j1 = self.snap(i, j)
+            try:
+                i1, j1 = self.snap(i, j)
+            except OutsideMapError:
+                return
             x1, y1 = get_coords_from_raster_indxs(self.geo_ref, i1, j1) 
             self.marker_snap.setCenter(QgsPointXY(x1,y1))
 
