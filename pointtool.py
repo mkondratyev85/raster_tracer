@@ -36,6 +36,8 @@ class PointTool(QgsMapToolEdit):
 
         self.rubber_band = QgsRubberBand(self.canvas(), False)  # False = not a polygon
         self.markers = []
+        self.marker_snap = QgsVertexMarker(self.canvas())
+        self.marker_snap.setColor(QColor(255, 0, 255))
 
     def snap_tolerance_changed(self, snap_tolerance):
         self.snap_tolerance = snap_tolerance
@@ -215,6 +217,21 @@ class PointTool(QgsMapToolEdit):
 
     def canvasMoveEvent(self, mouseEvent): 
         self.last_mouse_event_pos = mouseEvent.pos()
+
+        if self.snap_tolerance is not None and self.is_tracing:
+            qgsPoint = self.toMapCoordinates(mouseEvent.pos())
+            x1, y1 = qgsPoint.x(), qgsPoint.y()
+            i, j = get_indxs_from_raster_coords(self.geo_ref, x1, y1)
+            i1, j1 = self.snap(i, j)
+            x1, y1 = get_coords_from_raster_indxs(self.geo_ref, i1, j1) 
+            self.marker_snap.setCenter(QgsPointXY(x1,y1))
+
+        # If caching is enabled, a simple canvas refresh might not be sufficient
+        # to trigger a redraw and you must clear the cached image for the layer
+        if self.iface.mapCanvas().isCachingEnabled():
+            self.vlayer.triggerRepaint()
+        else:
+            self.iface.mapCanvas().refresh()
 
         # we need at least one point to draw
         if len(self.anchor_points) < 1: return 
