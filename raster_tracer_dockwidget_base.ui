@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>232</width>
-    <height>141</height>
+    <width>252</width>
+    <height>225</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -15,26 +15,65 @@
   </property>
   <widget class="QWidget" name="dockWidgetContents">
    <layout class="QGridLayout" name="gridLayout">
-    <item row="1" column="0">
-     <widget class="QLabel" name="label">
+    <item row="5" column="0">
+     <widget class="QCheckBox" name="checkBox">
       <property name="text">
-       <string>Replace this QLabel
-with the desired
-plugin content.</string>
+       <string>Snap to nearest</string>
       </property>
      </widget>
     </item>
-    <item row="0" column="0">
+    <item row="3" column="0">
+     <widget class="QCheckBox" name="checkBoxColor">
+      <property name="text">
+       <string>Trace color</string>
+      </property>
+     </widget>
+    </item>
+    <item row="3" column="1">
+     <widget class="QgsColorButton" name="mColorButton">
+      <property name="enabled">
+       <bool>false</bool>
+      </property>
+     </widget>
+    </item>
+    <item row="2" column="0">
+     <widget class="QLabel" name="label">
+      <property name="text">
+       <string>Layer to trace</string>
+      </property>
+     </widget>
+    </item>
+    <item row="2" column="1">
      <widget class="QgsMapLayerComboBox" name="mMapLayerComboBox"/>
+    </item>
+    <item row="5" column="1">
+     <widget class="QgsSpinBox" name="mQgsSpinBox">
+      <property name="enabled">
+       <bool>false</bool>
+      </property>
+      <property name="value">
+       <number>1</number>
+      </property>
+     </widget>
     </item>
    </layout>
   </widget>
  </widget>
  <customwidgets>
   <customwidget>
+   <class>QgsColorButton</class>
+   <extends>QToolButton</extends>
+   <header>qgscolorbutton.h</header>
+  </customwidget>
+  <customwidget>
    <class>QgsMapLayerComboBox</class>
    <extends>QComboBox</extends>
    <header>qgsmaplayercombobox.h</header>
+  </customwidget>
+  <customwidget>
+   <class>QgsSpinBox</class>
+   <extends>QSpinBox</extends>
+   <header>qgsspinbox.h</header>
   </customwidget>
  </customwidgets>
  <resources/>
