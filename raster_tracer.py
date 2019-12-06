@@ -252,6 +252,21 @@ class RasterTracer:
                 lambda: self.tool_identify.raster_layer_has_changed(self.dockwidget.mMapLayerComboBox.currentLayer()))
         self.tool_identify.raster_layer_has_changed(self.dockwidget.mMapLayerComboBox.currentLayer())
 
+        self.dockwidget.checkBoxColor.stateChanged.connect(self.checkBoxColor_changed)
+        self.dockwidget.mColorButton.colorChanged.connect(self.color_changed)
+
+    def checkBoxColor_changed(self):
+        if self.dockwidget.checkBoxColor.isChecked():
+            self.dockwidget.mColorButton.setEnabled(True)
+            self.color_changed()
+        else:
+            self.dockwidget.mColorButton.setEnabled(False)
+            self.tool_identify.trace_color_changed(False)
+
+    def color_changed(self):
+        color = self.dockwidget.mColorButton.color()
+        self.tool_identify.trace_color_changed(color)
+
 
         #shortcutBackspace = QShortcut(QKeySequence(Qt.Key_Escape), self.iface.mapCanvas())
         #shortcutBackspace.setContext(Qt.ApplicationShortcut)

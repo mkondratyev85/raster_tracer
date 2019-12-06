@@ -29,10 +29,22 @@ class PointTool(QgsMapToolEdit):
         QgsMapToolEmitPoint.__init__(self, canvas)
 
         self.rlayer = None
+        self.grid_changed = None
         self.vlayer = vlayer
 
         self.rubber_band = QgsRubberBand(self.canvas(), False)  # False = not a polygon
         self.markers = []
+
+    def trace_color_changed(self, color):
+        r,g,b = self.sample 
+
+        if color is False:
+            self.grid_changed = None
+        else:
+            r0,g0,b0,t = color.getRgb()
+            self.grid_changed = np.abs( (r0-r)**2 + (g0-g)**2 + (b0-b)**2 )
+
+
 
     def raster_layer_has_changed(self, raster_layer):
         self.rlayer = raster_layer
@@ -108,19 +120,18 @@ class PointTool(QgsMapToolEdit):
         marker.setCenter(QgsPointXY(x1,y1))
         self.markers.append(marker)
 
+        # we need at least two points to draw
+        if len(self.anchor_points)<2: return 
 
         i1, j1 = get_indxs_from_raster_coords(self.geo_ref, x1, y1)
-        r, g, b, = self.sample
-        r0 = r[i1,j1]
-        g0 = g[i1,j1]
-        b0 = b[i1,j1]
-        current_point = r0+g0+b0
-        grid = np.abs(self.grid - current_point)
-
-        grid = np.abs( (r0-r)**2 + (g0-g)**2 + (b0-b)**2 )
-
-
-        if len(self.anchor_points)<2: return # we need at least two points to draw
+        if self.grid_changed is None:
+            r, g, b, = self.sample
+            r0 = r[i1,j1]
+            g0 = g[i1,j1]
+            b0 = b[i1,j1]
+            grid = np.abs( (r0-r)**2 + (g0-g)**2 + (b0-b)**2 )
+        else:
+            grid = self.grid_changed
 
 
         x0, y0 = self.anchor_points[-2]
@@ -135,7 +146,8 @@ class PointTool(QgsMapToolEdit):
             path = find_path(grid.astype(np.dtype('l')), start_point, end_point)
             path = smooth(path, size=5)
             path = simplify(path)
-            path_ref = [get_coords_from_raster_indxs(self.geo_ref, i, j) for i,j in path]
+            path_ref = [get_coords_from_raster_indxs(self.geo_ref, i, j) 
+                                                                for i,j in path]
         else:
             path_ref = [(x0,y0),  (x1,y1)]
 
