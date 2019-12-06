@@ -253,22 +253,29 @@ class RasterTracer:
         self.tool_identify.raster_layer_has_changed(self.dockwidget.mMapLayerComboBox.currentLayer())
 
         self.dockwidget.checkBoxColor.stateChanged.connect(self.checkBoxColor_changed)
-        self.dockwidget.mColorButton.colorChanged.connect(self.color_changed)
+        self.dockwidget.mColorButton.colorChanged.connect(self.checkBoxColor_changed)
+
+        self.dockwidget.checkBoxSnap.stateChanged.connect(self.checkBoxSnap_changed)
+        self.dockwidget.mQgsSpinBox.valueChanged.connect(self.checkBoxSnap_changed)
+
+    def checkBoxSnap_changed(self):
+        if self.dockwidget.checkBoxSnap.isChecked():
+            self.dockwidget.mQgsSpinBox.setEnabled(True)
+            snap_tolerance = self.dockwidget.mQgsSpinBox.value()
+            self.tool_identify.snap_tolerance_changed(snap_tolerance)
+        else:
+            self.dockwidget.mQgsSpinBox.setEnabled(False)
+            self.tool_identify.snap_tolerance_changed(None)
+
 
     def checkBoxColor_changed(self):
         if self.dockwidget.checkBoxColor.isChecked():
             self.dockwidget.mColorButton.setEnabled(True)
-            self.color_changed()
+            self.dockwidget.checkBoxSnap.setEnabled(True)
+            color = self.dockwidget.mColorButton.color()
+            self.tool_identify.trace_color_changed(color)
         else:
             self.dockwidget.mColorButton.setEnabled(False)
+            self.dockwidget.checkBoxSnap.setEnabled(False)
             self.tool_identify.trace_color_changed(False)
-
-    def color_changed(self):
-        color = self.dockwidget.mColorButton.color()
-        self.tool_identify.trace_color_changed(color)
-
-
-        #shortcutBackspace = QShortcut(QKeySequence(Qt.Key_Escape), self.iface.mapCanvas())
-        #shortcutBackspace.setContext(Qt.ApplicationShortcut)
-        #shortcutBackspace.activated.connect(self.tool_identify.BackspacePressed)
 

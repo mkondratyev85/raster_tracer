@@ -30,10 +30,14 @@ class PointTool(QgsMapToolEdit):
 
         self.rlayer = None
         self.grid_changed = None
+        self.snap_tolerance = None
         self.vlayer = vlayer
 
         self.rubber_band = QgsRubberBand(self.canvas(), False)  # False = not a polygon
         self.markers = []
+
+    def snap_tolerance_changed(self, snap_tolerance):
+        self.snap_tolerance = snap_tolerance
 
     def trace_color_changed(self, color):
         r,g,b = self.sample 
@@ -133,7 +137,6 @@ class PointTool(QgsMapToolEdit):
         else:
             grid = self.grid_changed
 
-
         x0, y0 = self.anchor_points[-2]
         i0, j0 = get_indxs_from_raster_coords(self.geo_ref, x0, y0)
         i1, j1 = get_indxs_from_raster_coords(self.geo_ref, x1, y1)
@@ -142,7 +145,6 @@ class PointTool(QgsMapToolEdit):
         end_point = i1, j1
 
         if self.is_tracing:
-            #path = find_path(self.grid_inv.astype(np.dtype('l')), start_point, end_point)
             path = find_path(grid.astype(np.dtype('l')), start_point, end_point)
             path = smooth(path, size=5)
             path = simplify(path)

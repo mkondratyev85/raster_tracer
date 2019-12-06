@@ -16,7 +16,10 @@
   <widget class="QWidget" name="dockWidgetContents">
    <layout class="QGridLayout" name="gridLayout">
     <item row="5" column="0">
-     <widget class="QCheckBox" name="checkBox">
+     <widget class="QCheckBox" name="checkBoxSnap">
+      <property name="enabled">
+       <bool>false</bool>
+      </property>
       <property name="text">
        <string>Snap to nearest</string>
       </property>
@@ -33,6 +36,13 @@
      <widget class="QgsColorButton" name="mColorButton">
       <property name="enabled">
        <bool>false</bool>
+      </property>
+      <property name="defaultColor">
+       <color>
+        <red>0</red>
+        <green>0</green>
+        <blue>0</blue>
+       </color>
       </property>
      </widget>
     </item>
