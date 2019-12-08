@@ -248,8 +248,7 @@ class RasterTracer:
 
         excluded_layers = [l for l in QgsProject().instance().mapLayers().values() if isinstance(l, QgsVectorLayer)]
         self.dockwidget.mMapLayerComboBox.setExceptedLayerList(excluded_layers)
-        self.dockwidget.mMapLayerComboBox.currentIndexChanged.connect(
-                lambda: self.tool_identify.raster_layer_has_changed(self.dockwidget.mMapLayerComboBox.currentLayer()))
+        self.dockwidget.mMapLayerComboBox.currentIndexChanged.connect(self.raster_layer_changed)
         self.tool_identify.raster_layer_has_changed(self.dockwidget.mMapLayerComboBox.currentLayer())
 
         self.dockwidget.checkBoxColor.stateChanged.connect(self.checkBoxColor_changed)
@@ -257,6 +256,10 @@ class RasterTracer:
 
         self.dockwidget.checkBoxSnap.stateChanged.connect(self.checkBoxSnap_changed)
         self.dockwidget.mQgsSpinBox.valueChanged.connect(self.checkBoxSnap_changed)
+
+    def raster_layer_changed(self):
+        self.tool_identify.raster_layer_has_changed(self.dockwidget.mMapLayerComboBox.currentLayer())
+        self.checkBoxColor_changed()
 
     def checkBoxSnap_changed(self):
         if self.dockwidget.checkBoxSnap.isChecked():

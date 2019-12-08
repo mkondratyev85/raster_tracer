@@ -4,14 +4,14 @@ from qgis.PyQt.QtCore import Qt
 #from qgis.PyQt.QtWidgets import QApplication
 from qgis.PyQt.QtGui import QColor
 
-
-from osgeo import gdal 
-
 import numpy as np
 import matplotlib.pyplot as plt
 
+
 from .astar import find_path
 from .line_simplification import smooth, simplify
+from .utils import get_indxs_from_raster_coords, get_coords_from_raster_indxs, get_whole_raster
+
 
 class OutsideMapError(Exception):
     pass
@@ -76,7 +76,6 @@ class PointTool(QgsMapToolEdit):
         
         self.sample = (r,g,b)
         self.grid = r+g+b
-        self.grid_inv = self.grid*-1 + self.grid.max()
         self.geo_ref = geo_ref
 
     def keyPressEvent(self, e):
@@ -262,28 +261,3 @@ def add_features_to_vlayer(vlayer, points):
     feat.setGeometry(QgsGeometry.fromPolyline(polyline))
     (res, outFeats) = vlayer.dataProvider().addFeatures([feat])
 
-def get_indxs_from_raster_coords(geo_ref, x, y):
-    top_left_x, we_resolution, _, top_left_y, _, ns_resolution = geo_ref
-    
-    i = int( (y - top_left_y) /ns_resolution ) * -1 # in qgis2 it was without * -1
-    j = int( (x - top_left_x) /we_resolution )
-
-    return i, j
-
-def get_coords_from_raster_indxs(geo_ref, i, j):
-    top_left_x, we_resolution, _, top_left_y, _, ns_resolution = geo_ref
-
-    y = ( top_left_y- i*we_resolution ) 
-    x = top_left_x - j*ns_resolution * -1 # in qgis2 it was without *-1
-
-    return x + .5*ns_resolution, y - .5*we_resolution
-
-def get_whole_raster(layer):
-    raster_path = layer.source()
-    ds = gdal.Open(raster_path) 
-    band1 = np.array(ds.GetRasterBand(1).ReadAsArray())
-    band2 = np.array(ds.GetRasterBand(2).ReadAsArray())
-    band3 = np.array(ds.GetRasterBand(3).ReadAsArray())
-    geo_ref  = ds.GetGeoTransform()
-
-    return (band1,band2,band3), geo_ref
