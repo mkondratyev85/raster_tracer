@@ -1,11 +1,12 @@
 from qgis.core import QgsPointXY, QgsPoint, QgsGeometry, QgsFeature
-from qgis.gui import QgsMapToolEmitPoint, QgsMapToolEdit, QgsRubberBand, QgsVertexMarker
+from qgis.gui import QgsMapToolEmitPoint, QgsMapToolEdit, \
+                     QgsRubberBand, QgsVertexMarker
 from qgis.PyQt.QtCore import Qt
-#from qgis.PyQt.QtWidgets import QApplication
 from qgis.PyQt.QtGui import QColor
+from qgis.core import Qgis
 
 import numpy as np
-import matplotlib.pyplot as plt
+#import matplotlib.pyplot as plt
 
 
 from .astar import find_path
@@ -18,7 +19,7 @@ class OutsideMapError(Exception):
 
 class PointTool(QgsMapToolEdit):
 
-    def __init__(self, canvas, vlayer, iface, turn_off_snap):
+    def __init__(self, canvas, iface, turn_off_snap):
         self.last_mouse_event_pos = None
         self.iface = iface
         self.anchor_points = []
@@ -36,7 +37,7 @@ class PointTool(QgsMapToolEdit):
         self.rlayer = None
         self.grid_changed = None
         self.snap_tolerance = None
-        self.vlayer = vlayer
+        self.vlayer = None
 
         self.rubber_band = QgsRubberBand(self.canvas(), False)  # False = not a polygon
         self.markers = []
@@ -59,9 +60,24 @@ class PointTool(QgsMapToolEdit):
             r0,g0,b0,t = color.getRgb()
             self.grid_changed = np.abs( (r0-r)**2 + (g0-g)**2 + (b0-b)**2 )
 
+    def get_current_vector_layer(self):
+        try:
+            vlayer = self.iface.layerTreeView().selectedLayers()[0]
+            return vlayer
+        except IndexError:
+            self.iface.messageBar().pushMessage("Missing Layer", 
+                    "Please select vector layer to draw", 
+                    level=Qgis.Warning)
+            return None
 
     def raster_layer_has_changed(self, raster_layer):
         self.rlayer = raster_layer
+        if self.rlayer is None:
+            self.iface.messageBar().pushMessage("Missing Layer", 
+                    "Please select raster layer to trace", 
+                    level=Qgis.Warning)
+            return
+
         sample, geo_ref = get_whole_raster(self.rlayer)
 
         r = sample[0].astype(float)
@@ -82,9 +98,11 @@ class PointTool(QgsMapToolEdit):
         # delete last segment if backspace is pressed
         if e.key() == Qt.Key_Backspace or e.key() == Qt.Key_B:
             # check if we have at least one feature to delete
-            if self.vlayer.featureCount() < 1: return 
+            vlayer = self.get_current_vector_layer()
+            if vlayer is None: return
+            if vlayer.featureCount() < 1: return 
 
-            remove_last_feature(self.vlayer)
+            remove_last_feature(vlayer)
 
             # remove last marker
             if len(self.markers)>0: 
@@ -139,8 +157,13 @@ class PointTool(QgsMapToolEdit):
 
 
     def canvasReleaseEvent(self, mouseEvent):
+        vlayer = self.get_current_vector_layer()
+        if vlayer is None: return
+
         if self.rlayer is None:
-            print("Please select a raster layer to draw first!")
+            self.iface.messageBar().pushMessage("Missing Layer", 
+                    "Please select raster layer to trace", 
+                    level=Qgis.Warning)
         self.last_mouse_event_pos = mouseEvent.pos()
         # hide rubber_band
         self.rubber_band.hide()
@@ -194,7 +217,7 @@ class PointTool(QgsMapToolEdit):
             x0, y0 = self.anchor_points[-2]
             path_ref = [(x0,y0),  (x1,y1)]
 
-        add_features_to_vlayer(self.vlayer, path_ref)
+        add_features_to_vlayer(vlayer, path_ref)
         self.redraw()
 
 
@@ -202,6 +225,7 @@ class PointTool(QgsMapToolEdit):
         # this is very ugly but I can't make another way
         if self.last_mouse_event_pos is None: return
 
+        if len(self.anchor_points)<1: return
         x0, y0 = self.anchor_points[-1]
         qgsPoint = self.toMapCoordinates(self.last_mouse_event_pos)
         x1, y1 = qgsPoint.x(), qgsPoint.y()
@@ -213,6 +237,8 @@ class PointTool(QgsMapToolEdit):
             self.rubber_band.setLineStyle(Qt.DotLine)
         else:
             self.rubber_band.setLineStyle(Qt.SolidLine)
+        vlayer = self.get_current_vector_layer()
+        if vlayer is None: return
         self.rubber_band.setToGeometry(QgsGeometry.fromPolyline(points), self.vlayer)
 
 
@@ -243,7 +269,9 @@ class PointTool(QgsMapToolEdit):
         # If caching is enabled, a simple canvas refresh might not be sufficient
         # to trigger a redraw and you must clear the cached image for the layer
         if self.iface.mapCanvas().isCachingEnabled():
-            self.vlayer.triggerRepaint()
+            vlayer = self.get_current_vector_layer()
+            if vlayer is None: return
+            vlayer.triggerRepaint()
         else:
             self.iface.mapCanvas().refresh()
 

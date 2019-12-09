@@ -38,6 +38,8 @@ import os.path
 from qgis.core import *
 from qgis.gui import *
 
+from qgis.core import Qgis
+
 
 from .pointtool import PointTool
 
@@ -241,9 +243,8 @@ class RasterTracer:
             self.dockwidget.show()
 
         self.map_canvas = self.iface.mapCanvas()
-        #layer = QgsProject.instance().mapLayersByName('topomap')[0]
-        vlayer = self.iface.layerTreeView().selectedLayers()[0]
-        self.tool_identify = PointTool(self.map_canvas, vlayer, self.iface, self.turn_off_snap)
+        #vlayer = self.iface.layerTreeView().selectedLayers()[0]
+        self.tool_identify = PointTool(self.map_canvas, self.iface, self.turn_off_snap)
         self.map_canvas.setMapTool(self.tool_identify)
 
         excluded_layers = [l for l in QgsProject().instance().mapLayers().values() if isinstance(l, QgsVectorLayer)]
