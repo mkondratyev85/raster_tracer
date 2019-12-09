@@ -1,4 +1,5 @@
-from qgis.core import QgsPointXY, QgsPoint, QgsGeometry, QgsFeature
+from qgis.core import QgsPointXY, QgsPoint, QgsGeometry, QgsFeature, \
+                      QgsVectorLayer
 from qgis.gui import QgsMapToolEmitPoint, QgsMapToolEdit, \
                      QgsRubberBand, QgsVertexMarker
 from qgis.PyQt.QtCore import Qt
@@ -63,7 +64,13 @@ class PointTool(QgsMapToolEdit):
     def get_current_vector_layer(self):
         try:
             vlayer = self.iface.layerTreeView().selectedLayers()[0]
-            return vlayer
+            if isinstance(vlayer, QgsVectorLayer):
+                return vlayer
+            else:
+                self.iface.messageBar().pushMessage("Missing Layer", 
+                        "Please select vector layer to draw", 
+                        level=Qgis.Warning)
+                return None
         except IndexError:
             self.iface.messageBar().pushMessage("Missing Layer", 
                     "Please select vector layer to draw", 
