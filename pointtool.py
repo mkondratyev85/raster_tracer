@@ -302,4 +302,3 @@ def add_features_to_vlayer(vlayer, points):
     polyline = [QgsPoint(x,y) for x,y in points]
     feat.setGeometry(QgsGeometry.fromPolyline(polyline))
     (res, outFeats) = vlayer.dataProvider().addFeatures([feat])
-
