@@ -167,6 +167,12 @@ class PointTool(QgsMapToolEdit):
         vlayer = self.get_current_vector_layer()
         if vlayer is None: return
 
+        if not vlayer.isEditable():
+            self.iface.messageBar().pushMessage("Edit mode", 
+                    "Please begin editing vector layer to trace", 
+                    level=Qgis.Warning)
+            return
+
         if self.rlayer is None:
             self.iface.messageBar().pushMessage("Missing Layer", 
                     "Please select raster layer to trace", 
@@ -187,12 +193,13 @@ class PointTool(QgsMapToolEdit):
 
         qgsPoint = self.toMapCoordinates(mouseEvent.pos())
         x1, y1 = qgsPoint.x(), qgsPoint.y()
-        i, j = get_indxs_from_raster_coords(self.geo_ref, x1, y1)
-        try:
-            i1, j1 = self.snap(i, j)
-        except OutsideMapError:
-            return
-        x1, y1 = get_coords_from_raster_indxs(self.geo_ref, i1, j1) 
+        i1, j1 = get_indxs_from_raster_coords(self.geo_ref, x1, y1)
+        if self.snap_tolerance is not None: 
+            try:
+                i1, j1 = self.snap(i1, j1)
+            except OutsideMapError:
+                return
+            x1, y1 = get_coords_from_raster_indxs(self.geo_ref, i1, j1) 
         self.anchor_points.append((x1,y1))
         self.anchor_points_ij.append((i1,j1))
         marker = QgsVertexMarker(self.canvas())

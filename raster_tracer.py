@@ -190,8 +190,6 @@ class RasterTracer:
     def onClosePlugin(self):
         """Cleanup necessary items here when plugin dockwidget is closed"""
 
-        #print "** CLOSING RasterTracer"
-
         # disconnects
         self.dockwidget.closingPlugin.disconnect(self.onClosePlugin)
 
@@ -203,11 +201,13 @@ class RasterTracer:
 
         self.pluginIsActive = False
 
+        print("close")
+
 
     def unload(self):
         """Removes the plugin menu item and icon from QGIS GUI."""
 
-        #print "** UNLOAD RasterTracer"
+        #print( "** UNLOAD RasterTracer")
 
         for action in self.actions:
             self.iface.removePluginMenu(
