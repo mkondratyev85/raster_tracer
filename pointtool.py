@@ -12,7 +12,7 @@ import numpy as np
 
 from .astar import find_path
 from .line_simplification import smooth, simplify
-from .utils import get_indxs_from_raster_coords, get_coords_from_raster_indxs, get_whole_raster
+from .utils import get_indxs_from_raster_coords, get_coords_from_raster_indxs, get_whole_raster, PossiblyIndexedImageError
 
 
 class OutsideMapError(Exception):
@@ -90,7 +90,14 @@ class PointTool(QgsMapToolEdit):
                     level=Qgis.Warning, duration=2)
             return
 
-        sample, geo_ref = get_whole_raster(self.rlayer)
+        try:
+            sample, geo_ref = get_whole_raster(self.rlayer)
+        except PossiblyIndexedImageError:
+            self.iface.messageBar().pushMessage("Missing Layer", 
+                    "Can't trace indexed image", 
+                    level=Qgis.Critical, duration=2)
+            return
+
 
         r = sample[0].astype(float)
         g = sample[1].astype(float)
