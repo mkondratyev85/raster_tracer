@@ -201,6 +201,8 @@ class RasterTracer:
 
         self.pluginIsActive = False
 
+        self.tool_identify.deactivate()
+
 
     def unload(self):
         """Removes the plugin menu item and icon from QGIS GUI."""

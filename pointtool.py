@@ -1,7 +1,7 @@
 from qgis.core import QgsPointXY, QgsPoint, QgsGeometry, QgsFeature, \
                       QgsVectorLayer
 from qgis.gui import QgsMapToolEmitPoint, QgsMapToolEdit, \
-                     QgsRubberBand, QgsVertexMarker
+                     QgsRubberBand, QgsVertexMarker, QgsMapTool
 from qgis.PyQt.QtCore import Qt
 from qgis.PyQt.QtGui import QColor
 from qgis.core import Qgis
@@ -19,6 +19,11 @@ class OutsideMapError(Exception):
     pass
 
 class PointTool(QgsMapToolEdit):
+
+    def deactivate(self):
+        QgsMapTool.deactivate(self)
+        self.deactivated.emit()
+
 
     def __init__(self, canvas, iface, turn_off_snap):
         self.last_mouse_event_pos = None
