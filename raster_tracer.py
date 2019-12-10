@@ -197,11 +197,11 @@ class RasterTracer:
         # for reuse if plugin is reopened
         # Commented next statement since it causes QGIS crashe
         # when closing the docked window:
-        # self.dockwidget = None
+        self.dockwidget = None
 
         self.pluginIsActive = False
 
-        self.tool_identify.deactivate()
+        #self.tool_identify.deactivate()
 
 
     def unload(self):

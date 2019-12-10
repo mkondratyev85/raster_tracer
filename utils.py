@@ -1,6 +1,9 @@
 from osgeo import gdal 
 import numpy as np
 
+class PossiblyIndexedImageError(Exception):
+    pass
+
 def get_indxs_from_raster_coords(geo_ref, x, y):
     top_left_x, top_left_y, we_resolution, ns_resolution = geo_ref
     
@@ -32,9 +35,12 @@ def get_whole_raster(layer):
 
     raster_path = layer.source()
     ds = gdal.Open(raster_path) 
-    band1 = np.array(ds.GetRasterBand(1).ReadAsArray())
-    band2 = np.array(ds.GetRasterBand(2).ReadAsArray())
-    band3 = np.array(ds.GetRasterBand(3).ReadAsArray())
+    try:
+        band1 = np.array(ds.GetRasterBand(1).ReadAsArray())
+        band2 = np.array(ds.GetRasterBand(2).ReadAsArray())
+        band3 = np.array(ds.GetRasterBand(3).ReadAsArray())
+    except AttributeError:
+        raise PossiblyIndexedImageError
     geo_ref2  = ds.GetGeoTransform()
     top_left_x_, we_resolution_, _, top_left_y_, _, ns_resolution_ = geo_ref2
 
