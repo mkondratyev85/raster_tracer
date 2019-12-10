@@ -40,7 +40,7 @@ deprecated=False
 # plugin_dependencies=
 
 Category of the plugin: Raster, Vector, Database or Web
-category=Raster
+#category=Raster
 
 # If the plugin can run on QGIS Server.
 server=False
