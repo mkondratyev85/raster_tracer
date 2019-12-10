@@ -69,12 +69,12 @@ class PointTool(QgsMapToolEdit):
             else:
                 self.iface.messageBar().pushMessage("Missing Layer", 
                         "Please select vector layer to draw", 
-                        level=Qgis.Warning)
+                        level=Qgis.Warning, duration=2)
                 return None
         except IndexError:
             self.iface.messageBar().pushMessage("Missing Layer", 
                     "Please select vector layer to draw", 
-                    level=Qgis.Warning)
+                    level=Qgis.Warning, duration=2)
             return None
 
     def raster_layer_has_changed(self, raster_layer):
@@ -82,7 +82,7 @@ class PointTool(QgsMapToolEdit):
         if self.rlayer is None:
             self.iface.messageBar().pushMessage("Missing Layer", 
                     "Please select raster layer to trace", 
-                    level=Qgis.Warning)
+                    level=Qgis.Warning, duration=2)
             return
 
         sample, geo_ref = get_whole_raster(self.rlayer)
@@ -170,13 +170,13 @@ class PointTool(QgsMapToolEdit):
         if not vlayer.isEditable():
             self.iface.messageBar().pushMessage("Edit mode", 
                     "Please begin editing vector layer to trace", 
-                    level=Qgis.Warning)
+                    level=Qgis.Warning, duration=2)
             return
 
         if self.rlayer is None:
             self.iface.messageBar().pushMessage("Missing Layer", 
                     "Please select raster layer to trace", 
-                    level=Qgis.Warning)
+                    level=Qgis.Warning, duration=2)
         self.last_mouse_event_pos = mouseEvent.pos()
         # hide rubber_band
         self.rubber_band.hide()
