@@ -34,12 +34,6 @@ def get_whole_raster(layer, project_instance):
     top_left_x = extent.xMinimum()
     top_left_y = extent.yMaximum()
 
-    #print(project_instance.crs().authid())
-    #print(provider.crs().authid())
-    #print(layer.crs().authid())
-    #print("transformer: ", transform_from_source.transform(top_left_x, top_left_y))
-    #print("original: ", top_left_x, top_left_y)
-
     geo_ref = (top_left_x, top_left_y, dx, dy)
 
     to_indexes = lambda x, y : get_indxs_from_raster_coords( 
@@ -60,27 +54,6 @@ def get_whole_raster(layer, project_instance):
         band3 = np.array(ds.GetRasterBand(3).ReadAsArray())
     except AttributeError:
         raise PossiblyIndexedImageError
-    #geo_ref2  = ds.GetGeoTransform()
-    #top_left_x_, we_resolution_, _, top_left_y_, _, ns_resolution_ = geo_ref2
-
-    #print(extent.xMaximum(), extent.yMaximum(), extent.xMinimum(), extent.yMinimum())
-    ##[print(dir(layer))
-    #print("!!!!!!")
-    #print(dx, dy)
-    #print(top_left_x, top_left_y)
-    #print("!!!!!!")
-    #print(layer.crs().authid())
-    #print(provider.crs().authid())
-    #print("!!!!!!!")
-    ##layer.setCrs(crs)
-    #print(extent.xMaximum(), extent.yMaximum(), extent.xMinimum(), extent.yMinimum())
-    #print(layer.extent())
-    #print(layer.rasterUnitsPerPixelX(), layer.rasterUnitsPerPixelY())
-    #print(layer.crs().authid())
-    #print(ds.GetProjection())
-    ##print(dir(provider))
-    #print("!!!!!!!")
-    #print("!!!!!!!!!!!!!!!")
 
     return (band1,band2,band3), to_indexes, to_coords, to_coords_provider, \
                                                        to_coords_provider2
