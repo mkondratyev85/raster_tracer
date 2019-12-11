@@ -50,6 +50,8 @@ class PointTool(QgsMapToolEdit):
         self.marker_snap = QgsVertexMarker(self.canvas())
         self.marker_snap.setColor(QColor(255, 0, 255))
 
+        self.is_new_line_segment = True
+
     def snap_tolerance_changed(self, snap_tolerance):
         self.snap_tolerance = snap_tolerance
         if snap_tolerance is None:
@@ -203,6 +205,8 @@ class PointTool(QgsMapToolEdit):
             # finish point path if it was last point
             self.anchor_points = []
 
+            self.is_new_line_segment = True
+
             # hide all markers
             while len(self.markers)>0:
                 marker = self.markers.pop()
@@ -211,18 +215,7 @@ class PointTool(QgsMapToolEdit):
 
         qgsPoint = self.toMapCoordinates(mouseEvent.pos())
         x1, y1 = qgsPoint.x(), qgsPoint.y()
-        #i1, j1 = get_indxs_from_raster_coords(self.geo_ref, x1, y1)
-        #x1_, y1_ = get_coords_from_raster_indxs(self.geo_ref, i1, j1) 
-        #i1_, j1_ = get_indxs_from_raster_coords(self.geo_ref, x1_, y1_)
         i1, j1 = self.to_indexes(x1, y1)
-        #x1_, y1_ = self.to_coords(i1, j1)
-        #i1_, j1_ = self.to_indexes(x1_, y1_)
-        #print("-------")
-        #print("x1, y1: ", x1, y1)
-        #print("i1, j1: ", i1, j1)
-        #print("x1_, y1_: ", x1_, y1_)
-        #print("i1_, j1_: ", i1_, j1_)
-        #print("dx, dy", x1-x1_, y1-y1_)
         if self.snap_tolerance is not None: 
             try:
                 i1, j1 = self.snap(i1, j1)
@@ -261,7 +254,14 @@ class PointTool(QgsMapToolEdit):
             path_ref = [self.to_coords_provider2(x0,y0),  
                         self.to_coords_provider2(x1,y1)]
 
-        add_features_to_vlayer(vlayer, path_ref)
+        if self.is_new_line_segment:
+            add_features_to_vlayer(vlayer, path_ref)
+            self.is_new_line_segment=False
+            self.last_point = path_ref[-1]
+        else:
+            path_ref = [self.last_point] + path_ref[1:]
+            add_to_last_feature(vlayer, path_ref)
+            self.last_point = path_ref[-1]
         self.redraw()
 
 
@@ -322,6 +322,14 @@ class PointTool(QgsMapToolEdit):
             self.iface.mapCanvas().refresh()
 
 
+def add_to_last_feature(vlayer, points):
+    features = [f for f in vlayer.getFeatures()]
+    last_feature = features[-1]
+    fid = last_feature.id()
+    geom = last_feature.geometry()
+    points = [QgsPointXY(x,y) for x,y in points]
+    geom.addPointsXY(points)
+    vlayer.dataProvider().changeGeometryValues({ fid : geom })
 
 
 def remove_last_feature(vlayer):
