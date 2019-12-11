@@ -30,6 +30,7 @@ class PointTool(QgsMapToolEdit):
         self.iface = iface
         self.anchor_points = []
         self.anchor_points_ij = []
+        self.last_points = []
         self.is_tracing = True
         self.turn_off_snap = turn_off_snap
 
@@ -130,6 +131,11 @@ class PointTool(QgsMapToolEdit):
             if vlayer.featureCount() < 1: return 
 
             remove_last_feature(vlayer)
+            self.last_points.pop()
+            print(len(self.last_points))
+            #if len(self.last_points)=1:
+
+
 
             # remove last marker
             if len(self.markers)>0: 
@@ -206,6 +212,7 @@ class PointTool(QgsMapToolEdit):
             self.anchor_points = []
 
             self.is_new_line_segment = True
+            self.last_points = []
 
             # hide all markers
             while len(self.markers)>0:
@@ -221,7 +228,6 @@ class PointTool(QgsMapToolEdit):
                 i1, j1 = self.snap(i1, j1)
             except OutsideMapError:
                 return
-            #x1, y1 = get_coords_from_raster_indxs(self.geo_ref, i1, j1) 
             x1, y1 = self.to_coords(i1, j1)
         self.anchor_points.append((x1,y1))
         self.anchor_points_ij.append((i1,j1))
@@ -230,7 +236,9 @@ class PointTool(QgsMapToolEdit):
         self.markers.append(marker)
 
         # we need at least two points to draw
-        if len(self.anchor_points)<2: return 
+        if len(self.anchor_points)<2: 
+            self.last_points.append((x1,y1))
+            return
 
         if self.is_tracing:
             if self.grid_changed is None:
@@ -257,11 +265,10 @@ class PointTool(QgsMapToolEdit):
         if self.is_new_line_segment:
             add_features_to_vlayer(vlayer, path_ref)
             self.is_new_line_segment=False
-            self.last_point = path_ref[-1]
         else:
-            path_ref = [self.last_point] + path_ref[1:]
+            path_ref = [self.last_points[-1]] + path_ref[1:]
             add_to_last_feature(vlayer, path_ref)
-            self.last_point = path_ref[-1]
+        self.last_points.append(path_ref[-1])
         self.redraw()
 
 
@@ -334,7 +341,15 @@ def add_to_last_feature(vlayer, points):
 
 def remove_last_feature(vlayer):
     features = [f for f in vlayer.getFeatures()]
-    vlayer.deleteFeatures([features[-1].id()])
+    last_feature = features[-1]
+    fid = last_feature.id()
+    geom = last_feature.geometry()
+    try:
+        last_part_index = len(geom.asMultiPolyline())-1
+    except TypeError:
+        last_part_index = 0
+    geom.deletePart(last_part_index)
+    vlayer.dataProvider().changeGeometryValues({ fid : geom })
 
 
 def add_features_to_vlayer(vlayer, points):
