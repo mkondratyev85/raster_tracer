@@ -15,8 +15,8 @@ def get_indxs_from_raster_coords(geo_ref, xy):
 def get_coords_from_raster_indxs(geo_ref, ij):
     i, j = ij
     top_left_x, top_left_y, we_resolution, ns_resolution = geo_ref
-    y = ( top_left_y - (i+0.5)*we_resolution ) 
-    x = top_left_x - (j+0.5)*ns_resolution * -1 
+    y = ( top_left_y - (i+0.5)*ns_resolution ) 
+    x = top_left_x - (j+0.5)*we_resolution * -1 
     return x  , y 
 
 def get_whole_raster(layer, project_instance):
