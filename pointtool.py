@@ -1,5 +1,5 @@
 from qgis.core import QgsPointXY, QgsPoint, QgsGeometry, QgsFeature, \
-                      QgsVectorLayer
+                      QgsVectorLayer, QgsProject
 from qgis.gui import QgsMapToolEmitPoint, QgsMapToolEdit, \
                      QgsRubberBand, QgsVertexMarker, QgsMapTool
 from qgis.PyQt.QtCore import Qt
@@ -91,10 +91,13 @@ class PointTool(QgsMapToolEdit):
             return
 
         try:
-            sample, geo_ref = get_whole_raster(self.rlayer)
+            sample, to_indexes, to_coords, to_coords_provider, \
+                                         to_coords_provider2 = \
+                                                get_whole_raster(self.rlayer, 
+                                                QgsProject.instance())
         except PossiblyIndexedImageError:
             self.iface.messageBar().pushMessage("Missing Layer", 
-                    "Can't trace indexed image", 
+                    "Can't trace indexed or gray image", 
                     level=Qgis.Critical, duration=2)
             return
 
@@ -111,7 +114,10 @@ class PointTool(QgsMapToolEdit):
         
         self.sample = (r,g,b)
         self.grid = r+g+b
-        self.geo_ref = geo_ref
+        self.to_indexes = to_indexes
+        self.to_coords = to_coords
+        self.to_coords_provider = to_coords_provider
+        self.to_coords_provider2 = to_coords_provider2
 
     def keyPressEvent(self, e):
         # delete last segment if backspace is pressed
@@ -205,13 +211,25 @@ class PointTool(QgsMapToolEdit):
 
         qgsPoint = self.toMapCoordinates(mouseEvent.pos())
         x1, y1 = qgsPoint.x(), qgsPoint.y()
-        i1, j1 = get_indxs_from_raster_coords(self.geo_ref, x1, y1)
+        #i1, j1 = get_indxs_from_raster_coords(self.geo_ref, x1, y1)
+        #x1_, y1_ = get_coords_from_raster_indxs(self.geo_ref, i1, j1) 
+        #i1_, j1_ = get_indxs_from_raster_coords(self.geo_ref, x1_, y1_)
+        i1, j1 = self.to_indexes(x1, y1)
+        #x1_, y1_ = self.to_coords(i1, j1)
+        #i1_, j1_ = self.to_indexes(x1_, y1_)
+        #print("-------")
+        #print("x1, y1: ", x1, y1)
+        #print("i1, j1: ", i1, j1)
+        #print("x1_, y1_: ", x1_, y1_)
+        #print("i1_, j1_: ", i1_, j1_)
+        #print("dx, dy", x1-x1_, y1-y1_)
         if self.snap_tolerance is not None: 
             try:
                 i1, j1 = self.snap(i1, j1)
             except OutsideMapError:
                 return
-            x1, y1 = get_coords_from_raster_indxs(self.geo_ref, i1, j1) 
+            #x1, y1 = get_coords_from_raster_indxs(self.geo_ref, i1, j1) 
+            x1, y1 = self.to_coords(i1, j1)
         self.anchor_points.append((x1,y1))
         self.anchor_points_ij.append((i1,j1))
         marker = QgsVertexMarker(self.canvas())
@@ -237,11 +255,11 @@ class PointTool(QgsMapToolEdit):
             path = find_path(grid.astype(np.dtype('l')), start_point, end_point)
             path = smooth(path, size=5)
             path = simplify(path)
-            path_ref = [get_coords_from_raster_indxs(self.geo_ref, i, j) 
-                                                                for i,j in path]
+            path_ref = [self.to_coords_provider(i,j) for i,j in path]
         else:
             x0, y0 = self.anchor_points[-2]
-            path_ref = [(x0,y0),  (x1,y1)]
+            path_ref = [self.to_coords_provider2(x0,y0),  
+                        self.to_coords_provider2(x1,y1)]
 
         add_features_to_vlayer(vlayer, path_ref)
         self.redraw()
@@ -275,12 +293,14 @@ class PointTool(QgsMapToolEdit):
         if self.snap_tolerance is not None and self.is_tracing:
             qgsPoint = self.toMapCoordinates(mouseEvent.pos())
             x1, y1 = qgsPoint.x(), qgsPoint.y()
-            i, j = get_indxs_from_raster_coords(self.geo_ref, x1, y1)
+            #i, j = get_indxs_from_raster_coords(self.geo_ref, x1, y1)
+            i, j = self.to_indexes(x1, y1)
             try:
                 i1, j1 = self.snap(i, j)
             except OutsideMapError:
                 return
-            x1, y1 = get_coords_from_raster_indxs(self.geo_ref, i1, j1) 
+            #x1, y1 = get_coords_from_raster_indxs(self.geo_ref, i1, j1) 
+            x1, y1 = self.to_coords(i1, j1)
             self.marker_snap.setCenter(QgsPointXY(x1,y1))
 
         # we need at least one point to draw
