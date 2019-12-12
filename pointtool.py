@@ -12,7 +12,7 @@ import numpy as np
 
 from .astar import find_path
 from .line_simplification import smooth, simplify
-from .utils import get_indxs_from_raster_coords, get_coords_from_raster_indxs, get_whole_raster, PossiblyIndexedImageError
+from .utils import get_whole_raster, PossiblyIndexedImageError
 
 
 class OutsideMapError(Exception):
@@ -30,7 +30,6 @@ class PointTool(QgsMapToolEdit):
         self.iface = iface
         self.anchor_points = []
         self.anchor_points_ij = []
-        self.last_points = []
         self.is_tracing = True
         self.turn_off_snap = turn_off_snap
 
@@ -51,7 +50,6 @@ class PointTool(QgsMapToolEdit):
         self.marker_snap = QgsVertexMarker(self.canvas())
         self.marker_snap.setColor(QColor(255, 0, 255))
 
-        self.is_new_line_segment = True
 
     def snap_tolerance_changed(self, snap_tolerance):
         self.snap_tolerance = snap_tolerance
@@ -131,11 +129,6 @@ class PointTool(QgsMapToolEdit):
             if vlayer.featureCount() < 1: return 
 
             remove_last_feature(vlayer)
-            self.last_points.pop()
-            print(len(self.last_points))
-            #if len(self.last_points)=1:
-
-
 
             # remove last marker
             if len(self.markers)>0: 
@@ -203,6 +196,7 @@ class PointTool(QgsMapToolEdit):
             self.iface.messageBar().pushMessage("Missing Layer", 
                     "Please select raster layer to trace", 
                     level=Qgis.Warning, duration=2)
+
         self.last_mouse_event_pos = mouseEvent.pos()
         # hide rubber_band
         self.rubber_band.hide()
@@ -210,9 +204,6 @@ class PointTool(QgsMapToolEdit):
         if (mouseEvent.button()==Qt.RightButton):
             # finish point path if it was last point
             self.anchor_points = []
-
-            self.is_new_line_segment = True
-            self.last_points = []
 
             # hide all markers
             while len(self.markers)>0:
@@ -237,7 +228,6 @@ class PointTool(QgsMapToolEdit):
 
         # we need at least two points to draw
         if len(self.anchor_points)<2: 
-            self.last_points.append((x1,y1))
             return
 
         if self.is_tracing:
@@ -256,19 +246,21 @@ class PointTool(QgsMapToolEdit):
             path = find_path(grid.astype(np.dtype('l')), start_point, end_point)
             path = smooth(path, size=5)
             path = simplify(path)
+            current_last_point = self.to_coords(*path[-1])
             path_ref = [self.to_coords_provider(i,j) for i,j in path]
         else:
             x0, y0 = self.anchor_points[-2]
             path_ref = [self.to_coords_provider2(x0,y0),  
                         self.to_coords_provider2(x1,y1)]
+            current_last_point = (x1,y1)
 
-        if self.is_new_line_segment:
+        if len(self.anchor_points) == 2:
             add_features_to_vlayer(vlayer, path_ref)
-            self.is_new_line_segment=False
         else:
-            path_ref = [self.last_points[-1]] + path_ref[1:]
+            last_point = self.to_coords_provider2(*self.anchor_points[-2])
+            path_ref = [last_point] + path_ref[1:]
             add_to_last_feature(vlayer, path_ref)
-        self.last_points.append(path_ref[-1])
+        self.anchor_points[-1] = current_last_point
         self.redraw()
 
 
