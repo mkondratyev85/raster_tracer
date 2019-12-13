@@ -128,7 +128,8 @@ class PointTool(QgsMapToolEdit):
             if vlayer is None: return
             if vlayer.featureCount() < 1: return 
 
-            remove_last_feature(vlayer)
+            #it's a very ugly way of triggering single undo event
+            self.iface.editMenu().actions()[0].trigger()
 
             # remove last marker
             if len(self.markers)>0: 
@@ -255,11 +256,15 @@ class PointTool(QgsMapToolEdit):
             current_last_point = (x1,y1)
 
         if len(self.anchor_points) == 2:
-            add_features_to_vlayer(vlayer, path_ref)
+            vlayer.beginEditCommand("Adding new line")
+            add_feature_to_vlayer(vlayer, path_ref)
+            vlayer.endEditCommand()
         else:
             last_point = self.to_coords_provider2(*self.anchor_points[-2])
             path_ref = [last_point] + path_ref[1:]
+            vlayer.beginEditCommand("Adding new segment to the line")
             add_to_last_feature(vlayer, path_ref)
+            vlayer.endEditCommand()
         self.anchor_points[-1] = current_last_point
         self.redraw()
 
@@ -328,24 +333,10 @@ def add_to_last_feature(vlayer, points):
     geom = last_feature.geometry()
     points = [QgsPointXY(x,y) for x,y in points]
     geom.addPointsXY(points)
-    vlayer.dataProvider().changeGeometryValues({ fid : geom })
+    vlayer.changeGeometry(fid, geom)
 
-
-def remove_last_feature(vlayer):
-    features = [f for f in vlayer.getFeatures()]
-    last_feature = features[-1]
-    fid = last_feature.id()
-    geom = last_feature.geometry()
-    try:
-        last_part_index = len(geom.asMultiPolyline())-1
-    except TypeError:
-        last_part_index = 0
-    geom.deletePart(last_part_index)
-    vlayer.dataProvider().changeGeometryValues({ fid : geom })
-
-
-def add_features_to_vlayer(vlayer, points):
+def add_feature_to_vlayer(vlayer, points):
     feat = QgsFeature(vlayer.fields())
     polyline = [QgsPoint(x,y) for x,y in points]
     feat.setGeometry(QgsGeometry.fromPolyline(polyline))
-    (res, outFeats) = vlayer.dataProvider().addFeatures([feat])
+    vlayer.addFeature(feat)
