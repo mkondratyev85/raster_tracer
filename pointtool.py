@@ -221,6 +221,17 @@ class PointTool(QgsMapToolEdit):
             except OutsideMapError:
                 return
             x1, y1 = self.to_coords(i1, j1)
+        r, g, b, = self.sample
+        try:
+            r0 = r[i1,j1]
+            g0 = g[i1,j1]
+            b0 = b[i1,j1]
+        except IndexError:
+            self.iface.messageBar().pushMessage("Outside Map", 
+                    "Clicked outside of raster layer", 
+                    level=Qgis.Warning, duration=1)
+            return
+
         self.anchor_points.append((x1,y1))
         self.anchor_points_ij.append((i1,j1))
         marker = QgsVertexMarker(self.canvas())
@@ -233,10 +244,6 @@ class PointTool(QgsMapToolEdit):
 
         if self.is_tracing:
             if self.grid_changed is None:
-                r, g, b, = self.sample
-                r0 = r[i1,j1]
-                g0 = g[i1,j1]
-                b0 = b[i1,j1]
                 grid = np.abs( (r0-r)**2 + (g0-g)**2 + (b0-b)**2 )
             else:
                 grid = self.grid_changed
