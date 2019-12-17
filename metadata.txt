@@ -5,12 +5,12 @@
 [general]
 name=Raster Tracer
 qgisMinimumVersion=3.0
-description= RasterTracer is a plugin for semi-automatic digitizing of underlying raster layer in QGis.  It is useful, for example, when you need to digitize a scanned topographic map, with curved black lines representing lines of equal heights of the surface.  Instead of creating this curved vector line by manually clicking at each segment of this curved line to create multi-line, with this plugin you can click at the beginning of the curved line and at the end of the curved line, and it will automatically trace over black pixels (or pixels that are almost black) from the beginning to the end.  By using this plugin you reduce clicks while digitizing raster maps. See https://github.com/mkondratyev85/raster_tracer for more explanation.
+description=This plugin allows user to automaticaly trace lineal features of the underlaying raster map, simply by clicking on knots of lines on map.
 version=0.1.1
 author=Mikhail Kondratyev
 email=mkondratyev85@gmail.com
 
-about=This plugin allows user to automaticaly trace lineal features of the underlaying raster map, simply by clicking on knots of lines on map.
+about=RasterTracer is a plugin for semi-automatic digitizing of underlying raster layer in QGis.  It is useful, for example, when you need to digitize a scanned topographic map, with curved black lines representing lines of equal heights of the surface.  Instead of creating this curved vector line by manually clicking at each segment of this curved line to create multi-line, with this plugin you can click at the beginning of the curved line and at the end of the curved line, and it will automatically trace over black pixels (or pixels that are almost black) from the beginning to the end.  By using this plugin you reduce clicks while digitizing raster maps. See https://github.com/mkondratyev85/raster_tracer for more explanation.
 
 tracker=https://github.com/mkondratyev85/raster_tracer/issues
 repository=https://github.com/mkondratyev85/raster_tracer/
