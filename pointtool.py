@@ -227,7 +227,7 @@ class PointTool(QgsMapToolEdit):
             g0 = g[i1,j1]
             b0 = b[i1,j1]
         except IndexError:
-            self.iface.messageBar().pushMessage("Missing Layer", 
+            self.iface.messageBar().pushMessage("Outside Map", 
                     "Clicked outside of raster layer", 
                     level=Qgis.Warning, duration=1)
             return
