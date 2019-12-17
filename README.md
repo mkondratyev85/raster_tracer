@@ -1,6 +1,19 @@
 # RasterTracer
 
-RasterTracer is a plugin for semi-automatic digitizing of underlying raster layer in QGis. 
+RasterTracer is a plugin for semi-automatic digitizing of underlying raster
+layer in QGis.  
+It is useful, for example, when you need to digitize a scanned
+topographic map, with curved black lines representing lines of equal heights of
+the surface. 
+Instead of creating this curved vector line by manually clicking
+at each segment of this curved line to create multi-line, with this plugin you
+can click at the beginning of the curved line and at the end of the curved
+line, and it will automatically trace over black pixels (or pixels that are
+almost black) from the beginning to the end. 
+By using this plugin you reduce
+clicks while digitizing raster maps. 
+
+This process is show here: 
 
 <img src="screen.gif" width="640" />
 
