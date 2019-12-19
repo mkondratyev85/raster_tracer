@@ -71,6 +71,11 @@ class PointTool(QgsMapToolEdit):
         try:
             vlayer = self.iface.layerTreeView().selectedLayers()[0]
             if isinstance(vlayer, QgsVectorLayer):
+                if vlayer.geometryType() != 1:
+                    self.iface.messageBar().pushMessage("Incorrect Geometry", 
+                            "Please use LineString vector layer ", 
+                            level=Qgis.Warning, duration=2)
+                    return
                 return vlayer
             else:
                 self.iface.messageBar().pushMessage("Missing Layer", 
