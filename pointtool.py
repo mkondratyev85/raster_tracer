@@ -97,9 +97,12 @@ class PointTool(QgsMapToolEdit):
                                                 get_whole_raster(self.rlayer, 
                                                 QgsProject.instance())
         except PossiblyIndexedImageError:
-            self.iface.messageBar().pushMessage("Missing Layer", 
-                    "Can't trace indexed or gray image", 
-                    level=Qgis.Critical, duration=2)
+            self.iface.messageBar().pushMessage("Incorrect Layer", 
+                           "Can't trace indexed or gray image. \
+                                   Try to change colorspace to RGB.", 
+                    level=Qgis.Critical, duration=5)
+            self.rlayer = None
+            self.to_indexes = None
             return
 
 
@@ -214,6 +217,13 @@ class PointTool(QgsMapToolEdit):
 
         qgsPoint = self.toMapCoordinates(mouseEvent.pos())
         x1, y1 = qgsPoint.x(), qgsPoint.y()
+
+        if self.to_indexes is None:
+            self.iface.messageBar().pushMessage("Missing Layer", 
+                    "Please select correct raster layer", 
+                    level=Qgis.Critical, duration=2)
+            return
+
         i1, j1 = self.to_indexes(x1, y1)
         if self.snap_tolerance is not None: 
             try:
