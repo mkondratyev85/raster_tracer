@@ -30,6 +30,13 @@ It means, that each time you click on the map, it will trace slightly different 
 It slows down tracing a bit, but it may be useful if the color of the line you are tracing
 varies.
 
+## What image can it trace?
+
+Right now the plugin can trace over images that have standard RGB color space. 
+It has no support for any black and white, grey, or indexed images. 
+It means that if you have to trace over images with such unsupported colorspace, 
+first you have to convert colorspace of your image to RGB.
+
 
 ## Useful keys
 
