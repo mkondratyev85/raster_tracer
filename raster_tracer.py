@@ -196,7 +196,7 @@ class RasterTracer:
 
         self.pluginIsActive = False
 
-        #self.tool_identify.deactivate()
+        self.tool_identify.deactivate()
         self.map_canvas.unsetMapTool(self.last_maptool)
 
 
