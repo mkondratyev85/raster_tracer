@@ -1,7 +1,7 @@
-from qgis.core import QgsPointXY, QgsPoint, QgsGeometry, QgsFeature, \
-                      QgsVectorLayer, QgsProject
-from qgis.gui import QgsMapToolEmitPoint, QgsMapToolEdit, \
-                     QgsRubberBand, QgsVertexMarker, QgsMapTool
+from qgis.core import (QgsPointXY, QgsPoint, QgsGeometry, QgsFeature, 
+                      QgsVectorLayer, QgsProject, QgsTask, QgsApplication)
+from qgis.gui import (QgsMapToolEmitPoint, QgsMapToolEdit, 
+                     QgsRubberBand, QgsVertexMarker, QgsMapTool)
 from qgis.PyQt.QtCore import Qt
 from qgis.PyQt.QtGui import QColor
 from qgis.core import Qgis
@@ -275,9 +275,20 @@ class PointTool(QgsMapToolEdit):
             start_point = i0, j0
             end_point = i1, j1
 
-            path = find_path(grid.astype(np.dtype('l')), start_point, end_point)
-            path = smooth(path, size=5)
-            path = simplify(path)
+
+            path = trace_on_background(None, grid, start_point, end_point)
+
+            globals()['task1'] = QgsTask.fromFunction('Trace', 
+                             trace_on_background,
+                             grid,
+                             start_point,
+                             end_point,
+                             on_finished=self.finished_tracing_task)
+
+            QgsApplication.taskManager().addTask(task1)
+
+            return
+
             current_last_point = self.to_coords(*path[-1])
             path_ref = [self.to_coords_provider(i,j) for i,j in path]
         else:
@@ -299,6 +310,9 @@ class PointTool(QgsMapToolEdit):
         self.anchor_points[-1] = current_last_point
         self.redraw()
         del grid
+
+    def finished_tracing_task(self, Exception, result=None):
+        pass
 
 
     def update_rubber_band(self):
@@ -370,3 +384,9 @@ def add_feature_to_vlayer(vlayer, points):
     polyline = [QgsPoint(x,y) for x,y in points]
     feat.setGeometry(QgsGeometry.fromPolyline(polyline))
     vlayer.addFeature(feat)
+
+def trace_on_background(task, grid, start_point, end_point):
+    path = find_path(grid.astype(np.dtype('l')), start_point, end_point)
+    path = smooth(path, size=5)
+    path = simplify(path)
+    return path
