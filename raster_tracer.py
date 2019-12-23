@@ -197,6 +197,7 @@ class RasterTracer:
         self.pluginIsActive = False
 
         #self.tool_identify.deactivate()
+        self.map_canvas.unsetMapTool(self.last_maptool)
 
 
     def unload(self):
@@ -252,6 +253,7 @@ class RasterTracer:
             self.dockwidget.mQgsSpinBox.valueChanged.connect(self.checkBoxSnap_changed)
 
         self.map_canvas.setMapTool(self.tool_identify)
+        self.last_maptool = self.iface.mapCanvas().mapTool()
 
     def raster_layer_changed(self):
         self.tool_identify.raster_layer_has_changed(self.dockwidget.mMapLayerComboBox.currentLayer())
