@@ -27,18 +27,13 @@ from qgis.PyQt.QtWidgets import QAction
 # Initialize Qt resources from file resources.py
 from .resources import *
 
-from qgis.PyQt.QtGui import QShortcutEvent, QKeySequence
-from qgis.PyQt.QtWidgets import QShortcut
 
 # Import the code for the DockWidget
 from .raster_tracer_dockwidget import RasterTracerDockWidget
 import os.path
 
 
-from qgis.core import *
-from qgis.gui import *
-
-from qgis.core import Qgis
+from qgis.core import QgsProject, QgsVectorLayer
 
 
 from .pointtool import PointTool
@@ -201,7 +196,8 @@ class RasterTracer:
 
         self.pluginIsActive = False
 
-        #self.tool_identify.deactivate()
+        self.tool_identify.deactivate()
+        self.map_canvas.unsetMapTool(self.last_maptool)
 
 
     def unload(self):
@@ -238,25 +234,26 @@ class RasterTracer:
             self.dockwidget.closingPlugin.connect(self.onClosePlugin)
 
             # show the dockwidget
-            # TODO: fix to allow choice of dock location
             self.iface.addDockWidget(Qt.LeftDockWidgetArea, self.dockwidget)
             self.dockwidget.show()
 
-        self.map_canvas = self.iface.mapCanvas()
-        #vlayer = self.iface.layerTreeView().selectedLayers()[0]
-        self.tool_identify = PointTool(self.map_canvas, self.iface, self.turn_off_snap)
+            self.map_canvas = self.iface.mapCanvas()
+            self.tool_identify = PointTool(self.map_canvas, self.iface, self.turn_off_snap)
+
+            excluded_layers = [l for l in QgsProject().instance().mapLayers().values() 
+                                                        if isinstance(l, QgsVectorLayer)]
+            self.dockwidget.mMapLayerComboBox.setExceptedLayerList(excluded_layers)
+            self.dockwidget.mMapLayerComboBox.currentIndexChanged.connect(self.raster_layer_changed)
+            self.tool_identify.raster_layer_has_changed(self.dockwidget.mMapLayerComboBox.currentLayer())
+
+            self.dockwidget.checkBoxColor.stateChanged.connect(self.checkBoxColor_changed)
+            self.dockwidget.mColorButton.colorChanged.connect(self.checkBoxColor_changed)
+
+            self.dockwidget.checkBoxSnap.stateChanged.connect(self.checkBoxSnap_changed)
+            self.dockwidget.mQgsSpinBox.valueChanged.connect(self.checkBoxSnap_changed)
+
         self.map_canvas.setMapTool(self.tool_identify)
-
-        excluded_layers = [l for l in QgsProject().instance().mapLayers().values() if isinstance(l, QgsVectorLayer)]
-        self.dockwidget.mMapLayerComboBox.setExceptedLayerList(excluded_layers)
-        self.dockwidget.mMapLayerComboBox.currentIndexChanged.connect(self.raster_layer_changed)
-        self.tool_identify.raster_layer_has_changed(self.dockwidget.mMapLayerComboBox.currentLayer())
-
-        self.dockwidget.checkBoxColor.stateChanged.connect(self.checkBoxColor_changed)
-        self.dockwidget.mColorButton.colorChanged.connect(self.checkBoxColor_changed)
-
-        self.dockwidget.checkBoxSnap.stateChanged.connect(self.checkBoxSnap_changed)
-        self.dockwidget.mQgsSpinBox.valueChanged.connect(self.checkBoxSnap_changed)
+        self.last_maptool = self.iface.mapCanvas().mapTool()
 
     def raster_layer_changed(self):
         self.tool_identify.raster_layer_has_changed(self.dockwidget.mMapLayerComboBox.currentLayer())

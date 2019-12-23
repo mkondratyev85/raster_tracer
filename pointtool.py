@@ -24,6 +24,13 @@ class PointTool(QgsMapToolEdit):
         QgsMapTool.deactivate(self)
         self.deactivated.emit()
 
+        # hide all markers
+        while len(self.markers)>0:
+            marker = self.markers.pop()
+            self.canvas().scene().removeItem(marker)
+        self.canvas().scene().removeItem(self.rubber_band)
+        self.canvas().scene().removeItem(self.marker_snap)
+
 
     def __init__(self, canvas, iface, turn_off_snap):
         self.last_mouse_event_pos = None
@@ -44,6 +51,8 @@ class PointTool(QgsMapToolEdit):
         self.grid_changed = None
         self.snap_tolerance = None
         self.vlayer = None
+        self.grid = None
+        self.sample = None
 
         self.rubber_band = QgsRubberBand(self.canvas(), False)  # False = not a polygon
         self.markers = []
@@ -289,6 +298,7 @@ class PointTool(QgsMapToolEdit):
             vlayer.endEditCommand()
         self.anchor_points[-1] = current_last_point
         self.redraw()
+        del grid
 
 
     def update_rubber_band(self):
@@ -319,13 +329,11 @@ class PointTool(QgsMapToolEdit):
         if self.snap_tolerance is not None and self.is_tracing:
             qgsPoint = self.toMapCoordinates(mouseEvent.pos())
             x1, y1 = qgsPoint.x(), qgsPoint.y()
-            #i, j = get_indxs_from_raster_coords(self.geo_ref, x1, y1)
             i, j = self.to_indexes(x1, y1)
             try:
                 i1, j1 = self.snap(i, j)
             except OutsideMapError:
                 return
-            #x1, y1 = get_coords_from_raster_indxs(self.geo_ref, i1, j1) 
             x1, y1 = self.to_coords(i1, j1)
             self.marker_snap.setCenter(QgsPointXY(x1,y1))
 
