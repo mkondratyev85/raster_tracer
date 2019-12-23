@@ -27,18 +27,13 @@ from qgis.PyQt.QtWidgets import QAction
 # Initialize Qt resources from file resources.py
 from .resources import *
 
-from qgis.PyQt.QtGui import QShortcutEvent, QKeySequence
-from qgis.PyQt.QtWidgets import QShortcut
 
 # Import the code for the DockWidget
 from .raster_tracer_dockwidget import RasterTracerDockWidget
 import os.path
 
 
-from qgis.core import *
-from qgis.gui import *
-
-from qgis.core import Qgis
+from qgis.core import QgsProject, QgsVectorLayer
 
 
 from .pointtool import PointTool
@@ -244,7 +239,8 @@ class RasterTracer:
             self.map_canvas = self.iface.mapCanvas()
             self.tool_identify = PointTool(self.map_canvas, self.iface, self.turn_off_snap)
 
-            excluded_layers = [l for l in QgsProject().instance().mapLayers().values() if isinstance(l, QgsVectorLayer)]
+            excluded_layers = [l for l in QgsProject().instance().mapLayers().values() 
+                                                        if isinstance(l, QgsVectorLayer)]
             self.dockwidget.mMapLayerComboBox.setExceptedLayerList(excluded_layers)
             self.dockwidget.mMapLayerComboBox.currentIndexChanged.connect(self.raster_layer_changed)
             self.tool_identify.raster_layer_has_changed(self.dockwidget.mMapLayerComboBox.currentLayer())
