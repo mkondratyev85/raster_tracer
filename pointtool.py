@@ -278,6 +278,7 @@ class PointTool(QgsMapToolEdit):
 
             path = trace_on_background(None, grid, start_point, end_point)
 
+            # ugly workaround of a QgsTask bug
             globals()['task1'] = QgsTask.fromFunction('Trace', 
                              trace_on_background,
                              grid,
@@ -312,7 +313,25 @@ class PointTool(QgsMapToolEdit):
         del grid
 
     def finished_tracing_task(self, Exception, result=None):
-        pass
+        vlayer = self.get_current_vector_layer()
+        if vlayer is None: return
+
+        path = result
+        current_last_point = self.to_coords(*path[-1])
+        path_ref = [self.to_coords_provider(i,j) for i,j in path]
+
+        if len(self.anchor_points) == 2:
+            vlayer.beginEditCommand("Adding new line")
+            add_feature_to_vlayer(vlayer, path_ref)
+            vlayer.endEditCommand()
+        else:
+            last_point = self.to_coords_provider2(*self.anchor_points[-2])
+            path_ref = [last_point] + path_ref[1:]
+            vlayer.beginEditCommand("Adding new segment to the line")
+            add_to_last_feature(vlayer, path_ref)
+            vlayer.endEditCommand()
+        self.anchor_points[-1] = current_last_point
+        self.redraw()
 
 
     def update_rubber_band(self):
