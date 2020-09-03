@@ -69,6 +69,13 @@
       </property>
      </widget>
     </item>
+    <item row="6" column="0">
+     <widget class="QCheckBox" name="checkBoxSmooth">
+      <property name="text">
+       <string>Smooth lines</string>
+      </property>
+     </widget>
+    </item>
    </layout>
   </widget>
  </widget>
