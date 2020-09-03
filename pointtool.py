@@ -25,7 +25,7 @@ class PointTool(QgsMapToolEdit):
         QgsMapTool.deactivate(self)
         self.deactivated.emit()
 
-    def __init__(self, canvas, iface, turn_off_snap, smooth):
+    def __init__(self, canvas, iface, turn_off_snap, smooth=False):
         self.last_mouse_event_pos = None
         self.iface = iface
         self.anchor_points = []

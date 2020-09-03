@@ -239,8 +239,7 @@ class RasterTracer:
 
         self.map_canvas = self.iface.mapCanvas()
         # vlayer = self.iface.layerTreeView().selectedLayers()[0]
-        self.tool_identify = PointTool(self.map_canvas, self.iface,
-                                       self.turn_off_snap, self.smooth())
+        self.tool_identify = PointTool(self.map_canvas, self.iface, self.turn_off_snap)
         self.map_canvas.setMapTool(self.tool_identify)
 
         excluded_layers = [l for l in QgsProject().instance().mapLayers().values() if isinstance(l, QgsVectorLayer)]
@@ -254,12 +253,14 @@ class RasterTracer:
         self.dockwidget.checkBoxSnap.stateChanged.connect(self.checkBoxSnap_changed)
         self.dockwidget.mQgsSpinBox.valueChanged.connect(self.checkBoxSnap_changed)
 
+        self.dockwidget.checkBoxSmooth.stateChanged.connect(self.checkBoxSmooth_changed)
+
     def raster_layer_changed(self):
         self.tool_identify.raster_layer_has_changed(self.dockwidget.mMapLayerComboBox.currentLayer())
         self.checkBoxColor_changed()
 
-    def smooth(self):
-        return (self.dockwidget.checkBoxSmooth.isChecked() is True)
+    def checkBoxSmooth_changed(self):
+        self.tool_identify.smooth_line = (self.dockwidget.checkBoxSmooth.isChecked() is True)
 
     def checkBoxSnap_changed(self):
         if self.dockwidget.checkBoxSnap.isChecked():
