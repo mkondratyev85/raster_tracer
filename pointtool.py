@@ -100,7 +100,7 @@ class PointTool(QgsMapToolEdit):
         except PossiblyIndexedImageError:
             self.iface.messageBar().pushMessage("Missing Layer",
                             "Can't trace indexed or gray image",
-                   d              level=Qgis.Critical, duration=2)
+                            level=Qgis.Critical, duration=2)
             return
 
         r = sample[0].astype(float)
