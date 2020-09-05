@@ -20,7 +20,10 @@ repository=https://github.com/mkondratyev85/raster_tracer/
 
 hasProcessingProvider=no
 # Uncomment the following line and add your changelog:
-# changelog=
+changelog=1.1.0
+    -- Make smoothing optional (#15)
+    -- Warn the user when geometry type is not MultiLineString (#7, #13)
+    0.1.1
 
 # Tags are comma separated with spaces allowed
 tags=python
