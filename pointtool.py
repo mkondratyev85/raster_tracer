@@ -1,5 +1,5 @@
 from qgis.core import QgsPointXY, QgsPoint, QgsGeometry, QgsFeature, \
-                      QgsVectorLayer, QgsProject
+                      QgsVectorLayer, QgsProject, QgsWkbTypes
 from qgis.gui import QgsMapToolEmitPoint, QgsMapToolEdit, \
                      QgsRubberBand, QgsVertexMarker, QgsMapTool
 from qgis.PyQt.QtCore import Qt
@@ -73,7 +73,14 @@ class PointTool(QgsMapToolEdit):
         try:
             vlayer = self.iface.layerTreeView().selectedLayers()[0]
             if isinstance(vlayer, QgsVectorLayer):
-                return vlayer
+                if  vlayer.wkbType() == QgsWkbTypes.MultiLineString:
+                    return vlayer
+                else:
+                    self.iface.messageBar().pushMessage("The active" +
+                                   " layer must be a MultiLineString vector layer",
+                                          level=Qgis.Warning, duration=2)
+                    return None
+     
             else:
                 self.iface.messageBar().pushMessage("Missing Layer",
                                "Please select vector layer to draw",
