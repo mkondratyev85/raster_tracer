@@ -1,5 +1,5 @@
 from qgis.core import QgsPointXY, QgsPoint, QgsGeometry, QgsFeature, \
-                      QgsVectorLayer, QgsProject, QgsWkbTypes
+                      QgsVectorLayer, QgsProject, QgsWkbTypes, QgsApplication
 from qgis.gui import QgsMapToolEmitPoint, QgsMapToolEdit, \
                      QgsRubberBand, QgsVertexMarker, QgsMapTool
 from qgis.PyQt.QtCore import Qt
@@ -10,7 +10,7 @@ import numpy as np
 # import matplotlib.pyplot as plt
 
 
-from .astar import find_path
+from .astar import find_path, FindPathTask
 from .line_simplification import smooth, simplify
 from .utils import get_whole_raster, PossiblyIndexedImageError
 
@@ -270,8 +270,19 @@ class PointTool(QgsMapToolEdit):
             start_point = i0, j0
             end_point = i1, j1
 
-            path = find_path(grid.astype(np.dtype('l')), start_point,
-                             end_point)
+            find_path_task = FindPathTask(grid.astype(np.dtype('l')),
+                                          start_point,
+                                          end_point)
+            QgsApplication.taskManager().addTask(find_path_task)
+
+            while True:
+                if find_path_task.path is not None:
+                    break
+
+            path = find_path_task.path
+            # path = find_path(grid.astype(np.dtype('l')), start_point,
+            #                  end_point)
+
             if self.smooth_line:
                 path = smooth(path, size=5)
                 path = simplify(path)
@@ -373,3 +384,4 @@ def add_feature_to_vlayer(vlayer, points):
     polyline = [QgsPoint(x, y) for x, y in points]
     feat.setGeometry(QgsGeometry.fromPolyline(polyline))
     vlayer.addFeature(feat)
+

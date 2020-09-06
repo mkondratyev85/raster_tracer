@@ -1,5 +1,7 @@
 import heapq
 
+from qgis.core import QgsTask, QgsMessageLog
+
 class PriorityQueue:
     def __init__(self):
         self.elements = []
@@ -35,7 +37,64 @@ def get_neighbors(size_i, size_j, ij):
 def get_cost(array, current, next):
     return array[next]
 
+class FindPathTask(QgsTask):
 
+    def __init__(self, graph, start, goal):
+        super().__init__('Task for finding path on 2D grid for raster_tracer', QgsTask.CanCancel)
+        self.graph = graph
+        self.start = start
+        self.goal = goal
+        self.path = None
+
+    def run(self):
+        QgsMessageLog.logMessage('Started task "{}"'.format(
+                                     self.description()),
+                                 'raster_tracer task', 50)
+
+        graph = self.graph
+        start = self.start
+        goal = self.goal
+
+
+        frontier = PriorityQueue()
+        frontier.put(start, 0)
+        came_from = {}
+        cost_so_far = {}
+        came_from[start] = None
+        cost_so_far[start] = 0
+
+        size_i, size_j = graph.shape
+        
+        while not frontier.empty():
+            current = frontier.get()
+            
+            if current == goal:
+                break
+            
+            for next in get_neighbors(size_i, size_j, current):
+                new_cost = cost_so_far[current] + get_cost(graph, current, next)
+                if next not in cost_so_far or new_cost < cost_so_far[next]:
+                    cost_so_far[next] = new_cost
+                    priority = new_cost + heuristic(goal, next)
+                    frontier.put(next, priority)
+                    came_from[next] = current
+        
+        self.path = reconstruct_path(came_from, start, goal)
+
+        # QgsMessageLog.logMessage('Finished task "{}"'.format(
+        #                              self.description()),
+        #                          'raster_tracer task', 50)
+        return True
+
+    def finished(self, result):
+        QgsMessageLog.logMessage('Finished task from finished"{}"'.format(
+                                     self.description()),
+                                 'raster_tracer task', 50)
+        QgsMessageLog.logMessage('len of path is %s' % (len(self.path)),
+                                 'raster_tracer task', 50)
+
+    def cancel(self):
+        super().cancel()
 
 def find_path(graph, start, goal):
     frontier = PriorityQueue()
