@@ -45,6 +45,8 @@ class PointTool(QgsMapToolEdit):
         self.grid_changed = None
         self.snap_tolerance = None
         self.vlayer = None
+        self.grid = None
+        self.sample = None
 
         # False = not a polygon
         self.rubber_band = QgsRubberBand(self.canvas(), False)
@@ -224,6 +226,13 @@ class PointTool(QgsMapToolEdit):
 
         qgsPoint = self.toMapCoordinates(mouseEvent.pos())
         x1, y1 = qgsPoint.x(), qgsPoint.y()
+
+        if self.to_indexes is None:
+            self.iface.messageBar().pushMessage("Missing Layer", 
+                    "Please select correct raster layer", 
+                    level=Qgis.Critical, duration=2)
+            return
+
         i1, j1 = self.to_indexes(x1, y1)
         if self.snap_tolerance is not None:
             try:
@@ -286,6 +295,7 @@ class PointTool(QgsMapToolEdit):
             vlayer.endEditCommand()
         self.anchor_points[-1] = current_last_point
         self.redraw()
+        del grid
 
     def update_rubber_band(self):
         # this is very ugly but I can't make another way
