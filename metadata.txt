@@ -6,7 +6,7 @@
 name=Raster Tracer
 qgisMinimumVersion=3.0
 description=This plugin allows user to automaticaly trace lineal features of the underlaying raster map, simply by clicking on knots of lines on map.
-version=0.1.1
+version=0.2.0
 author=Mikhail Kondratyev
 email=mkondratyev85@gmail.com
 
@@ -20,7 +20,10 @@ repository=https://github.com/mkondratyev85/raster_tracer/
 
 hasProcessingProvider=no
 # Uncomment the following line and add your changelog:
-# changelog=
+changelog=0.2.0
+    -- Make smoothing optional (#15)
+    -- Warn the user when geometry type is not MultiLineString (#7, #13)
+    0.1.1
 
 # Tags are comma separated with spaces allowed
 tags=python
@@ -44,4 +47,3 @@ Category of the plugin: Raster, Vector, Database or Web
 
 # If the plugin can run on QGIS Server.
 server=False
-
