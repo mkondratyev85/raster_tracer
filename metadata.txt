@@ -20,7 +20,7 @@ repository=https://github.com/mkondratyev85/raster_tracer/
 
 hasProcessingProvider=no
 # Uncomment the following line and add your changelog:
-changelog=1.1.0
+changelog=0.2.0
     -- Make smoothing optional (#15)
     -- Warn the user when geometry type is not MultiLineString (#7, #13)
     0.1.1
@@ -47,4 +47,3 @@ Category of the plugin: Raster, Vector, Database or Web
 
 # If the plugin can run on QGIS Server.
 server=False
-
