@@ -24,6 +24,9 @@ changelog=0.2.0
     -- Make smoothing optional (#15)
     -- Warn the user when geometry type is not MultiLineString (#7, #13)
     0.1.1
+    -- Update in details and homepage adress
+    0.1
+    -- Initial version
 
 # Tags are comma separated with spaces allowed
 tags=python
