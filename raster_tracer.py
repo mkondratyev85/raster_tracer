@@ -236,17 +236,17 @@ class RasterTracer:
         self.tool_identify = PointTool(self.map_canvas, self.iface, self.turn_off_snap)
         self.map_canvas.setMapTool(self.tool_identify)
 
-            excluded_layers = [l for l in QgsProject().instance().mapLayers().values() 
-                                                        if isinstance(l, QgsVectorLayer)]
-            self.dockwidget.mMapLayerComboBox.setExceptedLayerList(excluded_layers)
-            self.dockwidget.mMapLayerComboBox.currentIndexChanged.connect(self.raster_layer_changed)
-            self.tool_identify.raster_layer_has_changed(self.dockwidget.mMapLayerComboBox.currentLayer())
+        excluded_layers = [l for l in QgsProject().instance().mapLayers().values() 
+                                                    if isinstance(l, QgsVectorLayer)]
+        self.dockwidget.mMapLayerComboBox.setExceptedLayerList(excluded_layers)
+        self.dockwidget.mMapLayerComboBox.currentIndexChanged.connect(self.raster_layer_changed)
+        self.tool_identify.raster_layer_has_changed(self.dockwidget.mMapLayerComboBox.currentLayer())
 
-            self.dockwidget.checkBoxColor.stateChanged.connect(self.checkBoxColor_changed)
-            self.dockwidget.mColorButton.colorChanged.connect(self.checkBoxColor_changed)
+        self.dockwidget.checkBoxColor.stateChanged.connect(self.checkBoxColor_changed)
+        self.dockwidget.mColorButton.colorChanged.connect(self.checkBoxColor_changed)
 
-            self.dockwidget.checkBoxSnap.stateChanged.connect(self.checkBoxSnap_changed)
-            self.dockwidget.mQgsSpinBox.valueChanged.connect(self.checkBoxSnap_changed)
+        self.dockwidget.checkBoxSnap.stateChanged.connect(self.checkBoxSnap_changed)
+        self.dockwidget.mQgsSpinBox.valueChanged.connect(self.checkBoxSnap_changed)
 
         self.map_canvas.setMapTool(self.tool_identify)
         self.last_maptool = self.iface.mapCanvas().mapTool()
