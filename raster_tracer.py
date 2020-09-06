@@ -22,7 +22,7 @@
  ***************************************************************************/
 """
 from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication, Qt
-from qgis.PyQt.QtGui import QIcon 
+from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QAction
 # Initialize Qt resources from file resources.py
 from .resources import *
@@ -35,8 +35,8 @@ import os.path
 
 from qgis.core import QgsProject, QgsVectorLayer
 
-
 from .pointtool import PointTool
+
 
 class RasterTracer:
     """QGIS Plugin Implementation."""
@@ -74,11 +74,10 @@ class RasterTracer:
         self.toolbar = self.iface.addToolBar(u'RasterTracer')
         self.toolbar.setObjectName(u'RasterTracer')
 
-        #print "** INITIALIZING RasterTracer"
+        # print "** INITIALIZING RasterTracer"
 
         self.pluginIsActive = False
         self.dockwidget = None
-
 
     # noinspection PyMethodMayBeStatic
     def tr(self, message):
@@ -95,18 +94,16 @@ class RasterTracer:
         # noinspection PyTypeChecker,PyArgumentList,PyCallByClass
         return QCoreApplication.translate('RasterTracer', message)
 
-
-    def add_action(
-        self,
-        icon_path,
-        text,
-        callback,
-        enabled_flag=True,
-        add_to_menu=True,
-        add_to_toolbar=True,
-        status_tip=None,
-        whats_this=None,
-        parent=None):
+    def add_action(self,
+                   icon_path,
+                   text,
+                   callback,
+                   enabled_flag=True,
+                   add_to_menu=True,
+                   add_to_toolbar=True,
+                   status_tip=None,
+                   whats_this=None,
+                   parent=None):
         """Add a toolbar icon to the toolbar.
 
         :param icon_path: Path to the icon for this action. Can be a resource
@@ -169,7 +166,6 @@ class RasterTracer:
 
         return action
 
-
     def initGui(self):
         """Create the menu entries and toolbar icons inside the QGIS GUI."""
 
@@ -180,7 +176,7 @@ class RasterTracer:
             callback=self.run,
             parent=self.iface.mainWindow())
 
-    #--------------------------------------------------------------------------
+    # -------------------------------------------------------------------------
 
     def onClosePlugin(self):
         """Cleanup necessary items here when plugin dockwidget is closed"""
@@ -196,14 +192,12 @@ class RasterTracer:
 
         self.pluginIsActive = False
 
-        self.tool_identify.deactivate()
-        self.map_canvas.unsetMapTool(self.last_maptool)
-
+        # self.tool_identify.deactivate()
 
     def unload(self):
         """Removes the plugin menu item and icon from QGIS GUI."""
 
-        #print( "** UNLOAD RasterTracer")
+        # print( "** UNLOAD RasterTracer")
 
         for action in self.actions:
             self.iface.removePluginMenu(
@@ -213,7 +207,7 @@ class RasterTracer:
         # remove the toolbar
         del self.toolbar
 
-    #--------------------------------------------------------------------------
+    # -------------------------------------------------------------------------
 
     def run(self):
         """Run method that loads and starts the plugin"""
@@ -221,12 +215,12 @@ class RasterTracer:
         if not self.pluginIsActive:
             self.pluginIsActive = True
 
-            #print "** STARTING RasterTracer"
+            # print "** STARTING RasterTracer"
 
             # dockwidget may not exist if:
             #    first run of plugin
             #    removed on close (see self.onClosePlugin method)
-            if self.dockwidget == None:
+            if self.dockwidget is None:
                 # Create the dockwidget (after translation) and keep reference
                 self.dockwidget = RasterTracerDockWidget()
 
@@ -237,27 +231,34 @@ class RasterTracer:
             self.iface.addDockWidget(Qt.LeftDockWidgetArea, self.dockwidget)
             self.dockwidget.show()
 
-            self.map_canvas = self.iface.mapCanvas()
-            self.tool_identify = PointTool(self.map_canvas, self.iface, self.turn_off_snap)
+        self.map_canvas = self.iface.mapCanvas()
+        # vlayer = self.iface.layerTreeView().selectedLayers()[0]
+        self.tool_identify = PointTool(self.map_canvas, self.iface, self.turn_off_snap)
+        self.map_canvas.setMapTool(self.tool_identify)
 
-            excluded_layers = [l for l in QgsProject().instance().mapLayers().values() 
-                                                        if isinstance(l, QgsVectorLayer)]
-            self.dockwidget.mMapLayerComboBox.setExceptedLayerList(excluded_layers)
-            self.dockwidget.mMapLayerComboBox.currentIndexChanged.connect(self.raster_layer_changed)
-            self.tool_identify.raster_layer_has_changed(self.dockwidget.mMapLayerComboBox.currentLayer())
+        excluded_layers = [l for l in QgsProject().instance().mapLayers().values() 
+                                                    if isinstance(l, QgsVectorLayer)]
+        self.dockwidget.mMapLayerComboBox.setExceptedLayerList(excluded_layers)
+        self.dockwidget.mMapLayerComboBox.currentIndexChanged.connect(self.raster_layer_changed)
+        self.tool_identify.raster_layer_has_changed(self.dockwidget.mMapLayerComboBox.currentLayer())
 
-            self.dockwidget.checkBoxColor.stateChanged.connect(self.checkBoxColor_changed)
-            self.dockwidget.mColorButton.colorChanged.connect(self.checkBoxColor_changed)
+        self.dockwidget.checkBoxColor.stateChanged.connect(self.checkBoxColor_changed)
+        self.dockwidget.mColorButton.colorChanged.connect(self.checkBoxColor_changed)
 
-            self.dockwidget.checkBoxSnap.stateChanged.connect(self.checkBoxSnap_changed)
-            self.dockwidget.mQgsSpinBox.valueChanged.connect(self.checkBoxSnap_changed)
+        self.dockwidget.checkBoxSnap.stateChanged.connect(self.checkBoxSnap_changed)
+        self.dockwidget.mQgsSpinBox.valueChanged.connect(self.checkBoxSnap_changed)
 
         self.map_canvas.setMapTool(self.tool_identify)
         self.last_maptool = self.iface.mapCanvas().mapTool()
 
+        self.dockwidget.checkBoxSmooth.stateChanged.connect(self.checkBoxSmooth_changed)
+
     def raster_layer_changed(self):
         self.tool_identify.raster_layer_has_changed(self.dockwidget.mMapLayerComboBox.currentLayer())
         self.checkBoxColor_changed()
+
+    def checkBoxSmooth_changed(self):
+        self.tool_identify.smooth_line = (self.dockwidget.checkBoxSmooth.isChecked() is True)
 
     def checkBoxSnap_changed(self):
         if self.dockwidget.checkBoxSnap.isChecked():
@@ -281,4 +282,3 @@ class RasterTracer:
             self.dockwidget.mColorButton.setEnabled(False)
             self.dockwidget.checkBoxSnap.setEnabled(False)
             self.tool_identify.trace_color_changed(False)
-
