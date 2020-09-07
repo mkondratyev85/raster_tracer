@@ -223,7 +223,7 @@ class PointTool(QgsMapToolEdit):
         # check if he haven't any new tasks yet
         if self.tracking_is_active:
             self.iface.messageBar().pushMessage(" ", 
-                    "Please wait till last segment is finished or terminate tracing by hitting Esc", 
+                    "Please wait till the last segment is finished or terminate tracing by hitting Esc", 
                     level=Qgis.Critical, duration=1)
             return
 
