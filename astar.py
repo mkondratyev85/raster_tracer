@@ -1,3 +1,10 @@
+'''
+Module performs searching of the best path on 2D grid between
+two given points by using famous A* method.
+Code is based on example from
+https://www.redblobgames.com/pathfinding/a-star/implementation.html
+'''
+
 import heapq
 
 from qgis.core import QgsTask, QgsMessageLog
@@ -37,10 +44,27 @@ def get_neighbors(size_i, size_j, ij):
 def get_cost(array, current, next):
     return array[next]
 
+
 class FindPathTask(QgsTask):
+    '''
+    Implementation of QGIS QgsTask
+    for searching of the path on the background.
+    '''
+
 
     def __init__(self, graph, start, goal, callback, vlayer):
-        super().__init__('Task for finding path on 2D grid for raster_tracer', QgsTask.CanCancel)
+        '''
+        Receives: graph - 2D grid of points
+        start - coordinates of start point
+        goal - coordinates of finish point
+        callback - function to call after finishing tracing
+        vlayer - vector layer for callback function
+        '''
+
+        super().__init__(
+            'Task for finding path on 2D grid for raster_tracer',
+            QgsTask.CanCancel
+                )
         self.graph = graph
         self.start = start
         self.goal = goal
@@ -49,14 +73,14 @@ class FindPathTask(QgsTask):
         self.vlayer = vlayer
 
     def run(self):
-        QgsMessageLog.logMessage('Started task "{}"'.format(
-                                     self.description()),
-                                 'raster_tracer task', 50)
+        '''
+        Actually trace over 2D grid,
+        i.e. finding the best path from start to goal
+        '''
 
         graph = self.graph
         start = self.start
         goal = self.goal
-
 
         frontier = PriorityQueue()
         frontier.put(start, 0)
@@ -66,13 +90,13 @@ class FindPathTask(QgsTask):
         cost_so_far[start] = 0
 
         size_i, size_j = graph.shape
-        
+
         while not frontier.empty():
             current = frontier.get()
-            
+
             if current == goal:
                 break
-            
+
             for next in get_neighbors(size_i, size_j, current):
                 # check isCanceled() to handle cancellation
                 if self.isCanceled():
@@ -84,54 +108,27 @@ class FindPathTask(QgsTask):
                     priority = new_cost + heuristic(goal, next)
                     frontier.put(next, priority)
                     came_from[next] = current
-        
+
         self.path = reconstruct_path(came_from, start, goal)
 
-        # QgsMessageLog.logMessage('Finished task "{}"'.format(
-        #                              self.description()),
-        #                          'raster_tracer task', 50)
         return True
 
     def finished(self, result):
-        # QgsMessageLog.logMessage('Finished task from finished"{}"'.format(
-        #                              self.description()),
-        #                          'raster_tracer task', 50)
-        # QgsMessageLog.logMessage('len of path is %s' % (len(self.path)),
-        #                          'raster_tracer task', 50)
+        '''
+        Call callback function if self.run was successful
+        '''
 
-        # call callback only if run was successful
         if result:
             self.callback(self.path, self.vlayer)
 
     def cancel(self):
+        '''
+        Executed when run catches cancel signal.
+        Terminates the QgsTask.
+        '''
+
         super().cancel()
 
-def find_path(graph, start, goal):
-    frontier = PriorityQueue()
-    frontier.put(start, 0)
-    came_from = {}
-    cost_so_far = {}
-    came_from[start] = None
-    cost_so_far[start] = 0
-
-    size_i, size_j = graph.shape
-    
-    while not frontier.empty():
-        current = frontier.get()
-        
-        if current == goal:
-            break
-        
-        for next in get_neighbors(size_i, size_j, current):
-            new_cost = cost_so_far[current] + get_cost(graph, current, next)
-            if next not in cost_so_far or new_cost < cost_so_far[next]:
-                cost_so_far[next] = new_cost
-                priority = new_cost + heuristic(goal, next)
-                frontier.put(next, priority)
-                came_from[next] = current
-    
-    path = reconstruct_path(came_from, start, goal)
-    return path
 
 def reconstruct_path(came_from, start, goal):
     current = goal
