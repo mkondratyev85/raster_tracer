@@ -48,6 +48,8 @@ class PointTool(QgsMapToolEdit):
         self.grid = None
         self.sample = None
 
+        self.tracking_is_active = False
+
         # False = not a polygon
         self.rubber_band = QgsRubberBand(self.canvas(), False)
         self.markers = []
@@ -218,6 +220,13 @@ class PointTool(QgsMapToolEdit):
         # hide rubber_band
         self.rubber_band.hide()
 
+        # check if he haven't any new tasks yet
+        if self.tracking_is_active:
+            self.iface.messageBar().pushMessage(" ", 
+                    "Please wait till last segment is finished or terminate tracing by hitting Esc", 
+                    level=Qgis.Critical, duration=1)
+            return
+
         if (mouseEvent.button() == Qt.RightButton):
             # finish point path if it was last point
             self.anchor_points = []
@@ -236,6 +245,7 @@ class PointTool(QgsMapToolEdit):
                     "Please select correct raster layer", 
                     level=Qgis.Critical, duration=2)
             return
+
 
         i1, j1 = self.to_indexes(x1, y1)
         if self.snap_tolerance is not None:
@@ -274,6 +284,7 @@ class PointTool(QgsMapToolEdit):
             start_point = i0, j0
             end_point = i1, j1
 
+
             # dirty hack to avoid QGIS crashing
             globals()['find_path_task'] = FindPathTask(
                     grid.astype(np.dtype('l')),
@@ -283,6 +294,7 @@ class PointTool(QgsMapToolEdit):
                     vlayer,
                     )
             QgsApplication.taskManager().addTask(find_path_task)
+            self.tracking_is_active = True
 
             # while True:
             #     if find_path_task.path is not None:
@@ -330,8 +342,6 @@ class PointTool(QgsMapToolEdit):
         Draws a path after tracer found it.
         '''
 
-        print('aaaaa')
-
         if was_tracing:
             if self.smooth_line:
                 path = smooth(path, size=5)
@@ -356,6 +366,7 @@ class PointTool(QgsMapToolEdit):
             vlayer.endEditCommand()
         self.anchor_points[-1] = current_last_point
         self.redraw()
+        self.tracking_is_active = False
 
 
     def update_rubber_band(self):
@@ -411,6 +422,8 @@ class PointTool(QgsMapToolEdit):
         # check if we have any tasks
         if globals()['find_path_task'] is None:
             return
+
+        self.tracking_is_active = False
 
         try:
             # send terminate signal to the task
