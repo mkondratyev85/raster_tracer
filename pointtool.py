@@ -7,7 +7,6 @@ from qgis.PyQt.QtGui import QColor
 from qgis.core import Qgis
 
 import numpy as np
-# import matplotlib.pyplot as plt
 
 
 from .astar import find_path, FindPathTask
@@ -260,9 +259,11 @@ class PointTool(QgsMapToolEdit):
             g0 = g[i1, j1]
             b0 = b[i1, j1]
         except IndexError:
-            self.iface.messageBar().pushMessage("Outside Map",
-                                                "Clicked outside of raster layer",
-                                                level=Qgis.Warning, duration=1)
+            self.iface.messageBar().pushMessage(
+                "Outside Map",
+                "Clicked outside of raster layer",
+                level=Qgis.Warning, duration=1,
+                )
             return
 
         self.anchor_points.append((x1, y1))
@@ -287,54 +288,23 @@ class PointTool(QgsMapToolEdit):
 
             # dirty hack to avoid QGIS crashing
             globals()['find_path_task'] = FindPathTask(
-                    grid.astype(np.dtype('l')),
-                    start_point,
-                    end_point,
-                    self.draw_path,
-                    vlayer,
-                    )
+                grid.astype(np.dtype('l')),
+                start_point,
+                end_point,
+                self.draw_path,
+                vlayer,
+                )
             QgsApplication.taskManager().addTask(find_path_task)
             self.tracking_is_active = True
 
-            # while True:
-            #     if find_path_task.path is not None:
-            #         break
-            #
-            # path = find_path_task.path
-            # # path = find_path(grid.astype(np.dtype('l')), start_point,
-            # #                  end_point)
-            #
-            # if self.smooth_line:
-            #     path = smooth(path, size=5)
-            #     path = simplify(path)
-            # current_last_point = self.to_coords(*path[-1])
-            # path_ref = [self.to_coords_provider(i, j) for i, j in path]
         else:
             self.draw_path(
-                    None,
-                    vlayer,
-                    was_tracing=False,
-                    x1=x1,
-                    y1=y1)
-        #     x0, y0 = self.anchor_points[-2]
-        #     path_ref = [self.to_coords_provider2(x0, y0),
-        #                 self.to_coords_provider2(x1, y1)]
-        #     current_last_point = (x1, y1)
-        #
-        # if len(self.anchor_points) == 2:
-        #     vlayer.beginEditCommand("Adding new line")
-        #     add_feature_to_vlayer(vlayer, path_ref)
-        #     vlayer.endEditCommand()
-        # else:
-        #     last_point = self.to_coords_provider2(*self.anchor_points[-2])
-        #     path_ref = [last_point] + path_ref[1:]
-        #     vlayer.beginEditCommand("Adding new segment to the line")
-        #     add_to_last_feature(vlayer, path_ref)
-        #     vlayer.endEditCommand()
-        
-        # self.anchor_points[-1] = current_last_point
-        # self.redraw()
-        # del grid
+                None,
+                vlayer,
+                was_tracing=False,
+                x1=x1,
+                y1=y1,
+                )
 
     def draw_path(self, path, vlayer, was_tracing=True,\
                   x1=None, y1=None):
