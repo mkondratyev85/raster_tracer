@@ -39,12 +39,14 @@ def get_cost(array, current, next):
 
 class FindPathTask(QgsTask):
 
-    def __init__(self, graph, start, goal):
+    def __init__(self, graph, start, goal, callback, vlayer):
         super().__init__('Task for finding path on 2D grid for raster_tracer', QgsTask.CanCancel)
         self.graph = graph
         self.start = start
         self.goal = goal
         self.path = None
+        self.callback = callback
+        self.vlayer = vlayer
 
     def run(self):
         QgsMessageLog.logMessage('Started task "{}"'.format(
@@ -92,6 +94,8 @@ class FindPathTask(QgsTask):
                                  'raster_tracer task', 50)
         QgsMessageLog.logMessage('len of path is %s' % (len(self.path)),
                                  'raster_tracer task', 50)
+        print('aaaa')
+        self.callback(self.path, self.vlayer)
 
     def cancel(self):
         super().cancel()
