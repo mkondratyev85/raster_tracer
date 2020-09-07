@@ -54,6 +54,8 @@ class PointTool(QgsMapToolEdit):
         self.marker_snap = QgsVertexMarker(self.canvas())
         self.marker_snap.setColor(QColor(255, 0, 255))
 
+        globals()['find_path_task'] = None
+
     def snap_tolerance_changed(self, snap_tolerance):
         self.snap_tolerance = snap_tolerance
         if snap_tolerance is None:
@@ -160,6 +162,8 @@ class PointTool(QgsMapToolEdit):
             self.update_rubber_band()
         elif e.key() == Qt.Key_S:
             self.turn_off_snap()
+        elif e.key() == Qt.Key_Escape:
+            self.abort_tracing_process()
 
     def snap(self, i, j):
         if self.snap_tolerance is None:
@@ -401,6 +405,19 @@ class PointTool(QgsMapToolEdit):
 
         self.update_rubber_band()
         self.redraw()
+
+    def abort_tracing_process(self):
+
+        # check if we have any tasks
+        if globals()['find_path_task'] is None:
+            return
+
+        try:
+            # send terminate signal to the task
+            globals()['find_path_task'].cancel()
+        except RuntimeError:
+            pass
+            
 
     def redraw(self):
         # If caching is enabled, a simple canvas refresh might not be

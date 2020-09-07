@@ -74,6 +74,10 @@ class FindPathTask(QgsTask):
                 break
             
             for next in get_neighbors(size_i, size_j, current):
+                # check isCanceled() to handle cancellation
+                if self.isCanceled():
+                    return False
+
                 new_cost = cost_so_far[current] + get_cost(graph, current, next)
                 if next not in cost_so_far or new_cost < cost_so_far[next]:
                     cost_so_far[next] = new_cost
@@ -89,13 +93,15 @@ class FindPathTask(QgsTask):
         return True
 
     def finished(self, result):
-        QgsMessageLog.logMessage('Finished task from finished"{}"'.format(
-                                     self.description()),
-                                 'raster_tracer task', 50)
-        QgsMessageLog.logMessage('len of path is %s' % (len(self.path)),
-                                 'raster_tracer task', 50)
-        print('aaaa')
-        self.callback(self.path, self.vlayer)
+        # QgsMessageLog.logMessage('Finished task from finished"{}"'.format(
+        #                              self.description()),
+        #                          'raster_tracer task', 50)
+        # QgsMessageLog.logMessage('len of path is %s' % (len(self.path)),
+        #                          'raster_tracer task', 50)
+
+        # call callback only if run was successful
+        if result:
+            self.callback(self.path, self.vlayer)
 
     def cancel(self):
         super().cancel()
