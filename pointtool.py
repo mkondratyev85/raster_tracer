@@ -9,13 +9,15 @@ from qgis.core import Qgis
 import numpy as np
 
 
-from .astar import find_path, FindPathTask
+from .astar import FindPathTask
 from .line_simplification import smooth, simplify
 from .utils import get_whole_raster, PossiblyIndexedImageError
 
+from .pointtool_states import (WaitingFirstPointState,
+                               WaitingMiddlePointState,
+                               )
 
-class OutsideMapError(Exception):
-    pass
+from .exceptions import OutsideMapError
 
 
 class PointTool(QgsMapToolEdit):
@@ -56,6 +58,11 @@ class PointTool(QgsMapToolEdit):
         self.marker_snap.setColor(QColor(255, 0, 255))
 
         globals()['find_path_task'] = None
+
+        self.change_state(WaitingFirstPointState)
+
+    def change_state(self, state):
+        self.state = state(self)
 
     def snap_tolerance_changed(self, snap_tolerance):
         self.snap_tolerance = snap_tolerance
@@ -166,6 +173,83 @@ class PointTool(QgsMapToolEdit):
         elif e.key() == Qt.Key_Escape:
             self.abort_tracing_process()
 
+    def add_anchor_points(self, x1, y1, i1, j1):
+        '''
+        Adds anchor points and markers to self.
+        '''
+
+        self.anchor_points.append((x1, y1))
+        self.anchor_points_ij.append((i1, j1))
+        marker = QgsVertexMarker(self.canvas())
+        marker.setCenter(QgsPointXY(x1, y1))
+        self.markers.append(marker)
+
+    def get_rgb_from_ij(self, i1, j1):
+        '''
+        Returns R, G, B values of raster at
+        given indexes i1, j1
+        '''
+        pass
+
+    def trace(self, x1, y1, i1, j1, vlayer):
+        '''
+        Traces path from last point to given point.
+        In case tracing is inactive just creates
+        straight line.
+        '''
+
+        if self.is_tracing:
+
+            # r0, g0, b0 = self.get_rgb_from_ij(i1, j1)
+
+            if self.snap_tolerance is not None:
+                try:
+                    i1, j1 = self.snap(i1, j1)
+                except OutsideMapError:
+                    return
+                x1, y1 = self.to_coords(i1, j1)
+            r, g, b, = self.sample
+            try:
+                r0 = r[i1, j1]
+                g0 = g[i1, j1]
+                b0 = b[i1, j1]
+            except IndexError:
+                self.iface.messageBar().pushMessage(
+                    "Outside Map",
+                    "Clicked outside of raster layer",
+                    level=Qgis.Warning, duration=1,
+                    )
+                return
+
+            if self.grid_changed is None:
+                grid = np.abs((r0 - r) ** 2 + (g0 - g) ** 2 + (b0 - b) ** 2)
+            else:
+                grid = self.grid_changed
+            i0, j0 = self.anchor_points_ij[-2]
+            start_point = i0, j0
+            end_point = i1, j1
+
+            # dirty hack to avoid QGIS crashing
+            globals()['find_path_task'] = FindPathTask(
+                grid.astype(np.dtype('l')),
+                start_point,
+                end_point,
+                self.draw_path,
+                vlayer,
+                )
+            QgsApplication.taskManager().addTask(find_path_task)
+            self.tracking_is_active = True
+
+        else:
+            self.draw_path(
+                None,
+                vlayer,
+                was_tracing=False,
+                x1=x1,
+                y1=y1,
+                )
+
+
     def snap(self, i, j):
         if self.snap_tolerance is None:
             return i, j
@@ -200,111 +284,38 @@ class PointTool(QgsMapToolEdit):
         return i+delta_i, j+delta_j
 
     def canvasReleaseEvent(self, mouseEvent):
+
         vlayer = self.get_current_vector_layer()
+
         if vlayer is None:
             return
 
         if not vlayer.isEditable():
-            self.iface.messageBar().pushMessage("Edit mode",
-                    "Please begin editing vector layer to trace",
-                    level=Qgis.Warning, duration=2)
+            self.iface.messageBar().pushMessage(
+                "Edit mode",
+                "Please begin editing vector layer to trace",
+                level=Qgis.Warning,
+                duration=2,
+                )
             return
 
         if self.rlayer is None:
-            self.iface.messageBar().pushMessage("Missing Layer",
-                                                "Please select raster layer to trace",
-                                                level=Qgis.Warning, duration=2)
-
-        self.last_mouse_event_pos = mouseEvent.pos()
-        # hide rubber_band
-        self.rubber_band.hide()
-
-        # check if he haven't any new tasks yet
-        if self.tracking_is_active:
-            self.iface.messageBar().pushMessage(" ", 
-                    "Please wait till the last segment is finished or terminate tracing by hitting Esc", 
-                    level=Qgis.Critical, duration=1)
-            return
-
-        if (mouseEvent.button() == Qt.RightButton):
-            # finish point path if it was last point
-            self.anchor_points = []
-
-            # hide all markers
-            while len(self.markers) > 0:
-                marker = self.markers.pop()
-                self.canvas().scene().removeItem(marker)
-            return
-
-        qgsPoint = self.toMapCoordinates(mouseEvent.pos())
-        x1, y1 = qgsPoint.x(), qgsPoint.y()
-
-        if self.to_indexes is None:
-            self.iface.messageBar().pushMessage("Missing Layer", 
-                    "Please select correct raster layer", 
-                    level=Qgis.Critical, duration=2)
-            return
-
-
-        i1, j1 = self.to_indexes(x1, y1)
-        if self.snap_tolerance is not None:
-            try:
-                i1, j1 = self.snap(i1, j1)
-            except OutsideMapError:
-                return
-            x1, y1 = self.to_coords(i1, j1)
-        r, g, b, = self.sample
-        try:
-            r0 = r[i1, j1]
-            g0 = g[i1, j1]
-            b0 = b[i1, j1]
-        except IndexError:
             self.iface.messageBar().pushMessage(
-                "Outside Map",
-                "Clicked outside of raster layer",
-                level=Qgis.Warning, duration=1,
+                "Missing Layer",
+                "Please select raster layer to trace",
+                level=Qgis.Warning,
+                duration=2,
                 )
             return
 
-        self.anchor_points.append((x1, y1))
-        self.anchor_points_ij.append((i1, j1))
-        marker = QgsVertexMarker(self.canvas())
-        marker.setCenter(QgsPointXY(x1, y1))
-        self.markers.append(marker)
+        if mouseEvent.button() == Qt.RightButton:
+            self.state.click_rmb(mouseEvent, vlayer)
+        elif mouseEvent.button() == Qt.LeftButton:
+            self.state.click_lmb(mouseEvent, vlayer)
 
-        # we need at least two points to draw
-        if len(self.anchor_points) < 2:
-            return
-
-        if self.is_tracing:
-            if self.grid_changed is None:
-                grid = np.abs((r0 - r) ** 2 + (g0 - g) ** 2 + (b0 - b) ** 2)
-            else:
-                grid = self.grid_changed
-            i0, j0 = self.anchor_points_ij[-2]
-            start_point = i0, j0
-            end_point = i1, j1
+        return
 
 
-            # dirty hack to avoid QGIS crashing
-            globals()['find_path_task'] = FindPathTask(
-                grid.astype(np.dtype('l')),
-                start_point,
-                end_point,
-                self.draw_path,
-                vlayer,
-                )
-            QgsApplication.taskManager().addTask(find_path_task)
-            self.tracking_is_active = True
-
-        else:
-            self.draw_path(
-                None,
-                vlayer,
-                was_tracing=False,
-                x1=x1,
-                y1=y1,
-                )
 
     def draw_path(self, path, vlayer, was_tracing=True,\
                   x1=None, y1=None):
