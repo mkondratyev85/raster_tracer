@@ -183,31 +183,61 @@ class PointTool(QgsMapToolEdit):
         self.to_coords_provider = to_coords_provider
         self.to_coords_provider2 = to_coords_provider2
 
+    def remove_last_anchor_point(self):
+        '''
+        Removes last anchor point and last marker point
+        '''
+
+        # check if we have at least one feature to delete
+        vlayer = self.get_current_vector_layer()
+        if vlayer is None:
+            return
+        if vlayer.featureCount() < 1:
+            return
+
+        # it's a very ugly way of triggering single undo event
+        self.iface.editMenu().actions()[0].trigger()
+
+        # remove last marker
+        if len(self.markers) > 0:
+            last_marker = self.markers.pop()
+            self.canvas().scene().removeItem(last_marker)
+
+        # remove last anchor
+        if len(self.anchor_points) > 0:
+            self.anchor_points.pop()
+            self.anchor_points_ij.pop()
+
+        self.update_rubber_band()
+        self.redraw()
+
     def keyPressEvent(self, e):
         # delete last segment if backspace is pressed
         if e.key() == Qt.Key_Backspace or e.key() == Qt.Key_B:
-            # check if we have at least one feature to delete
-            vlayer = self.get_current_vector_layer()
-            if vlayer is None:
-                return
-            if vlayer.featureCount() < 1:
-                return
 
-            # it's a very ugly way of triggering single undo event
-            self.iface.editMenu().actions()[0].trigger()
-
-            # remove last marker
-            if len(self.markers) > 0:
-                last_marker = self.markers.pop()
-                self.canvas().scene().removeItem(last_marker)
-
-            # remove last anchor
-            if len(self.anchor_points) > 0:
-                self.anchor_points.pop()
-                self.anchor_points_ij.pop()
-
-            self.update_rubber_band()
-            self.redraw()
+            self.remove_last_anchor_point()
+            # # check if we have at least one feature to delete
+            # vlayer = self.get_current_vector_layer()
+            # if vlayer is None:
+            #     return
+            # if vlayer.featureCount() < 1:
+            #     return
+            #
+            # # it's a very ugly way of triggering single undo event
+            # self.iface.editMenu().actions()[0].trigger()
+            #
+            # # remove last marker
+            # if len(self.markers) > 0:
+            #     last_marker = self.markers.pop()
+            #     self.canvas().scene().removeItem(last_marker)
+            #
+            # # remove last anchor
+            # if len(self.anchor_points) > 0:
+            #     self.anchor_points.pop()
+            #     self.anchor_points_ij.pop()
+            #
+            # self.update_rubber_band()
+            # self.redraw()
 
         elif e.key() == Qt.Key_A:
             self.is_tracing = not self.is_tracing
@@ -216,6 +246,7 @@ class PointTool(QgsMapToolEdit):
             self.turn_off_snap()
         elif e.key() == Qt.Key_Escape:
             self.abort_tracing_process()
+            self.remove_last_anchor_point()
 
     def add_anchor_points(self, x1, y1, i1, j1):
         '''
@@ -446,7 +477,7 @@ class PointTool(QgsMapToolEdit):
             # send terminate signal to the task
             globals()['find_path_task'].cancel()
         except RuntimeError:
-            pass
+            return
             
 
     def redraw(self):
