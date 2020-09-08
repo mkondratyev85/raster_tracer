@@ -2,8 +2,6 @@
 Module contains States for pointtool.
 '''
 
-from qgis.core import Qgis
-
 from .exceptions import OutsideMapError
 
 
@@ -31,10 +29,10 @@ class State:
 
         # check if he haven't any new tasks yet
         if self.pointtool.tracking_is_active:
-            self.pointtool.iface.messageBar().pushMessage(
+            self.pointtool.display_message(
                 " ",
                 "Please wait till the last segment is finished or terminate tracing by hitting Esc",
-                level=Qgis.Critical,
+                level='Critical',
                 duration=1,
                 )
             return False
@@ -44,10 +42,10 @@ class State:
         x1, y1 = qgsPoint.x(), qgsPoint.y()
 
         if self.pointtool.to_indexes is None:
-            self.pointtool.iface.messageBar().pushMessage(
+            self.pointtool.display_message(
                 "Missing Layer",
                 "Please select correct raster layer",
-                level=Qgis.Critical,
+                level='Critical',
                 duration=2,
                 )
             return False

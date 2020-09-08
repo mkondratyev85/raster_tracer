@@ -61,6 +61,33 @@ class PointTool(QgsMapToolEdit):
 
         self.change_state(WaitingFirstPointState)
 
+    def display_message(self,
+                        title,
+                        message,
+                        level='Info',
+                        duration=2,
+                        ):
+        '''
+        Shows message bar to the user.
+        `level` receives one of four possible string values:
+            Info, Warning, Critical, Success
+        '''
+
+        LEVELS = {
+            'Info': Qgis.Info,
+            'Warning': Qgis.Warning,
+            'Critical': Qgis.Critical,
+            'Success': Qgis.Success,
+        }
+
+        self.iface.messageBar().pushMessage(
+            title,
+            message,
+            LEVELS[level],
+            duration)
+
+
+
     def change_state(self, state):
         self.state = state(self)
 
@@ -88,38 +115,55 @@ class PointTool(QgsMapToolEdit):
                 if  vlayer.wkbType() == QgsWkbTypes.MultiLineString:
                     return vlayer
                 else:
-                    self.iface.messageBar().pushMessage("The active" +
-                                   " layer must be a MultiLineString vector layer",
-                                          level=Qgis.Warning, duration=2)
+                    self.display_message(
+                        " ",
+                        "The active layer must be" +
+                        " a MultiLineString vector layer",
+                        level='Warning',
+                        duration=2,
+                        )
                     return None
-     
             else:
-                self.iface.messageBar().pushMessage("Missing Layer",
-                               "Please select vector layer to draw",
-                                      level=Qgis.Warning, duration=2)
+                self.display_message(
+                    "Missing Layer",
+                    "Please select vector layer to draw",
+                    level='Warning',
+                    duration=2,
+                    )
                 return None
         except IndexError:
-            self.iface.messageBar().pushMessage("Missing Layer",
-                           "Please select vector layer to draw",
-                                  level=Qgis.Warning, duration=2)
+            self.display_mesage(
+                "Missing Layer",
+                "Please select vector layer to draw",
+                level='Warning',
+                duration=2,
+                )
             return None
 
     def raster_layer_has_changed(self, raster_layer):
         self.rlayer = raster_layer
         if self.rlayer is None:
-            self.iface.messageBar().pushMessage("Missing Layer",
-                          "Please select raster layer to trace",
-                                  level=Qgis.Warning, duration=2)
+            self.display_mesage(
+                "Missing Layer",
+                "Please select raster layer to trace",
+                level='Warning',
+                duration=2,
+                )
             return
 
         try:
             sample, to_indexes, to_coords, to_coords_provider, \
                 to_coords_provider2 = \
-                get_whole_raster(self.rlayer, QgsProject.instance())
+                get_whole_raster(self.rlayer,
+                                 QgsProject.instance(),
+                                 )
         except PossiblyIndexedImageError:
-            self.iface.messageBar().pushMessage("Missing Layer",
-                            "Can't trace indexed or gray image",
-                            level=Qgis.Critical, duration=2)
+            self.display_message(
+                "Missing Layer",
+                "Can't trace indexed or gray image",
+                level='Critical',
+                duration=2,
+                )
             return
 
         r = sample[0].astype(float)
@@ -184,13 +228,6 @@ class PointTool(QgsMapToolEdit):
         marker.setCenter(QgsPointXY(x1, y1))
         self.markers.append(marker)
 
-    def get_rgb_from_ij(self, i1, j1):
-        '''
-        Returns R, G, B values of raster at
-        given indexes i1, j1
-        '''
-        pass
-
     def trace(self, x1, y1, i1, j1, vlayer):
         '''
         Traces path from last point to given point.
@@ -199,8 +236,6 @@ class PointTool(QgsMapToolEdit):
         '''
 
         if self.is_tracing:
-
-            # r0, g0, b0 = self.get_rgb_from_ij(i1, j1)
 
             if self.snap_tolerance is not None:
                 try:
@@ -214,10 +249,11 @@ class PointTool(QgsMapToolEdit):
                 g0 = g[i1, j1]
                 b0 = b[i1, j1]
             except IndexError:
-                self.iface.messageBar().pushMessage(
+                self.display_message(
                     "Outside Map",
                     "Clicked outside of raster layer",
-                    level=Qgis.Warning, duration=1,
+                    level='Warning',
+                    duration=1,
                     )
                 return
 
@@ -291,19 +327,19 @@ class PointTool(QgsMapToolEdit):
             return
 
         if not vlayer.isEditable():
-            self.iface.messageBar().pushMessage(
+            self.display_message(
                 "Edit mode",
                 "Please begin editing vector layer to trace",
-                level=Qgis.Warning,
+                level='Warning',
                 duration=2,
                 )
             return
 
         if self.rlayer is None:
-            self.iface.messageBar().pushMessage(
+            self.display_message(
                 "Missing Layer",
                 "Please select raster layer to trace",
-                level=Qgis.Warning,
+                level='Warning',
                 duration=2,
                 )
             return
