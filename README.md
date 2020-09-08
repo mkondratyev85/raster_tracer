@@ -21,19 +21,19 @@ The process is show here:
 
 Tracing is enable only if the selected vector layer is in the editing mode.
 
-The geometry type og the vector layer has to be MultiLineString / MultiCurve.
+The geometry type of the vector layer has to be MultiLineString / MultiCurve.
 
 You can choose the color that will be traced over in the raster image. 
 To do this, check the box `trace color` and select the desired color in
 the dialog window.
 
-If `trace color` is not checked, the pluging will try to trace the color that is 
-similar to the color of the pixel on the map at the place where you cliked the
+If `trace color` is not checked, the plugin will try to trace the color that is 
+similar to the color of the pixel on the map at the place where you clicked the
 last time.
 This means that each time you click on the map, it will trace a slightly
 different color.
 It slows down tracing a bit, but may be useful if the color of the line you are
-tracing varies.
+tracing varies over the map.
 
 ## What image can it trace?
 
@@ -49,3 +49,6 @@ you have to convert the colorspace of your image to RGB first.
 `b` - delete last segment
 
 `a` - switch between "trace" mode and "single-line" mode.
+
+`Esc` - cancel tracing segment. Useful when raster_tracer struggles to find 
+a good path between clicked points (Usually when points are far from each other).
