@@ -48,7 +48,7 @@ you have to convert the colorspace of your image to RGB first.
 
 `b` - delete last segment
 
-`a` - switch between "trace" mode and "single-line" mode.
+`a` - switch between "trace" mode and "straight-line" mode.
 
 `Esc` - cancel tracing segment. Useful when raster_tracer struggles to find 
 a good path between clicked points (Usually when points are far from each other).
