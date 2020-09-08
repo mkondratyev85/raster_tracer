@@ -31,7 +31,8 @@ class State:
         if self.pointtool.tracking_is_active:
             self.pointtool.display_message(
                 " ",
-                "Please wait till the last segment is finished or terminate tracing by hitting Esc",
+                "Please wait till the last segment is finished" +
+                " or terminate tracing by hitting Esc",
                 level='Critical',
                 duration=1,
                 )
@@ -55,7 +56,6 @@ class State:
         self.pointtool.add_anchor_points(x1, y1, i1, j1)
 
         self.current_point = x1, y1, i1, j1
-
 
         return True
 
@@ -88,14 +88,12 @@ class WaitingMiddlePointState(State):
     '''
 
     def click_lmb(self, mouseEvent, vlayer):
-        
         if super().click_lmb(mouseEvent, vlayer) is False:
             return
 
         x1, y1, i1, j1 = self.current_point
 
         self.pointtool.trace(x1, y1, i1, j1, vlayer)
-
 
     def click_rmb(self, mouseEvent, vlayer):
 

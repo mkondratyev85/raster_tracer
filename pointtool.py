@@ -132,7 +132,7 @@ class PointTool(QgsMapToolEdit):
                     )
                 return None
         except IndexError:
-            self.display_mesage(
+            self.display_message(
                 "Missing Layer",
                 "Please select vector layer to draw",
                 level='Warning',
@@ -143,7 +143,7 @@ class PointTool(QgsMapToolEdit):
     def raster_layer_has_changed(self, raster_layer):
         self.rlayer = raster_layer
         if self.rlayer is None:
-            self.display_mesage(
+            self.display_message(
                 "Missing Layer",
                 "Please select raster layer to trace",
                 level='Warning',
