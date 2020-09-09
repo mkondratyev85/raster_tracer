@@ -9,7 +9,7 @@ from qgis.core import Qgis
 import numpy as np
 
 
-from .astar import FindPathTask
+from .astar import FindPathTask, FindPathFunction
 from .line_simplification import smooth, simplify
 from .utils import get_whole_raster, PossiblyIndexedImageError
 
@@ -214,31 +214,7 @@ class PointTool(QgsMapToolEdit):
     def keyPressEvent(self, e):
         # delete last segment if backspace is pressed
         if e.key() == Qt.Key_Backspace or e.key() == Qt.Key_B:
-
             self.remove_last_anchor_point()
-            # # check if we have at least one feature to delete
-            # vlayer = self.get_current_vector_layer()
-            # if vlayer is None:
-            #     return
-            # if vlayer.featureCount() < 1:
-            #     return
-            #
-            # # it's a very ugly way of triggering single undo event
-            # self.iface.editMenu().actions()[0].trigger()
-            #
-            # # remove last marker
-            # if len(self.markers) > 0:
-            #     last_marker = self.markers.pop()
-            #     self.canvas().scene().removeItem(last_marker)
-            #
-            # # remove last anchor
-            # if len(self.anchor_points) > 0:
-            #     self.anchor_points.pop()
-            #     self.anchor_points_ij.pop()
-            #
-            # self.update_rubber_band()
-            # self.redraw()
-
         elif e.key() == Qt.Key_A:
             self.is_tracing = not self.is_tracing
             self.update_rubber_band()
@@ -258,6 +234,35 @@ class PointTool(QgsMapToolEdit):
         marker = QgsVertexMarker(self.canvas())
         marker.setCenter(QgsPointXY(x1, y1))
         self.markers.append(marker)
+
+    def trace_over_image(self, start, goal):
+        '''
+        performs tracing
+        '''
+
+
+        i0, j0 = start
+        i1, j1 = goal
+
+        r, g, b, = self.sample
+
+        try:
+            r0 = r[i1, j1]
+            g0 = g[i1, j1]
+            b0 = b[i1, j1]
+        except IndexError:
+            raise OutsideMapError
+
+        if self.grid_changed is None:
+            grid = np.abs((r0 - r) ** 2 + (g0 - g) ** 2 + (b0 - b) ** 2)
+        else:
+            grid = self.grid_changed
+
+        path, cost = FindPathFunction(grid.astype(np.dtype('l')),
+                                      (i0, j0),
+                                      (i1, j1),
+                                      )
+        return path, cost
 
     def trace(self, x1, y1, i1, j1, vlayer):
         '''

@@ -2,7 +2,7 @@
 Module contains States for pointtool.
 '''
 
-from .exceptions import OutsideMapError
+from math import atan2, cos, sin, radians
 
 
 class State:
@@ -95,6 +95,14 @@ class WaitingMiddlePointState(State):
 
         self.pointtool.trace(x1, y1, i1, j1, vlayer)
 
+        if True:
+            self.pointtool.change_state(AutoFollowingLineState)
+
+            for _ in range(25):
+                self.pointtool.state.begin_autofollowing(vlayer)
+
+            self.pointtool.change_state(WaitingMiddlePointState)
+
     def click_rmb(self, mouseEvent, vlayer):
 
         # finish point path if it was last point
@@ -111,3 +119,64 @@ class WaitingMiddlePointState(State):
         # change state
         self.pointtool.change_state(WaitingFirstPointState)
 
+
+class AutoFollowingLineState(State):
+    '''
+    This state is active when raster_tracer is trying to
+    perform auto-following of the line.
+    '''
+
+    def begin_autofollowing(self, vlayer):
+        # x1, y1 = self.pointtool.anchor_points[-1]
+        i1, j1 = self.pointtool.anchor_points_ij[-1]
+        # x0, y0 = self.pointtool.anchor_points[-2]
+        i0, j0 = self.pointtool.anchor_points_ij[-2]
+        direction = atan2(j1 - j0, i1 - i0)
+        distance = 5
+        points = self.search_near_points((i1, j1), direction, distance)
+
+        costs = []
+        paths = []
+
+        for point in points:
+            i2, j2 = point
+            x2, y2 = self.pointtool.to_coords(i2, j2)
+
+            # self.pointtool.add_anchor_points(x2, y2, i2, j2)
+
+            path, cost = self.pointtool.trace_over_image((i1, j1), (i2, j2))
+            costs.append(cost)
+            paths.append(path)
+
+        min_cost = min(costs)
+        min_cost_index = costs.index(min_cost)
+
+        best_point = points[min_cost_index]
+        best_path = paths[min_cost_index]
+        i, j = best_point
+        x, y = self.pointtool.to_coords(i, j)
+
+        self.pointtool.add_anchor_points(x, y, i, j)
+        self.pointtool.draw_path(best_path, vlayer)
+
+        # self.pointtool.trace(x, y, i, j, vlayer)
+
+    def search_near_points(self, point, direction, distance):
+        '''
+        Returns list of points near last point in the given direction,
+        at a given distance with given space between points.
+        '''
+
+        points = []
+
+        i1, j1 = point
+
+        angles = [direction + radians(i) for i in range(-60, 60, 10)]
+
+        for angle in angles:
+            i2 = i1 + distance * cos(angle)
+            j2 = j1 + distance * sin(angle)
+
+            points.append((int(i2), int(j2)))
+
+        return points

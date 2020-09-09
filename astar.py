@@ -44,6 +44,37 @@ def get_neighbors(size_i, size_j, ij):
 def get_cost(array, current, next):
     return array[next]
 
+def FindPathFunction(graph, start, goal):
+
+    frontier = PriorityQueue()
+    frontier.put(start, 0)
+    came_from = {}
+    cost_so_far = {}
+    came_from[start] = None
+    cost_so_far[start] = 0
+
+    size_i, size_j = graph.shape
+
+    while not frontier.empty():
+        current = frontier.get()
+
+        if current == goal:
+            break
+
+        for next in get_neighbors(size_i, size_j, current):
+            # check isCanceled() to handle cancellation
+
+            new_cost = cost_so_far[current] + get_cost(graph, current, next)
+            if next not in cost_so_far or new_cost < cost_so_far[next]:
+                cost_so_far[next] = new_cost
+                priority = new_cost + heuristic(goal, next)
+                frontier.put(next, priority)
+                came_from[next] = current
+
+    path = reconstruct_path(came_from, start, goal)
+
+    return path, cost_so_far[goal]
+
 
 class FindPathTask(QgsTask):
     '''
@@ -120,6 +151,8 @@ class FindPathTask(QgsTask):
 
         if result:
             self.callback(self.path, self.vlayer)
+
+        print('aaa')
 
     def cancel(self):
         '''
