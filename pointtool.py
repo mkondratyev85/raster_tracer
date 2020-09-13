@@ -67,7 +67,7 @@ class PointTool(QgsMapToolEdit):
         self.marker_snap = QgsVertexMarker(self.canvas())
         self.marker_snap.setColor(QColor(255, 0, 255))
 
-        self.find_path_task = []
+        self.find_path_task = None
 
         self.change_state(WaitingFirstPointState)
 
@@ -209,7 +209,7 @@ class PointTool(QgsMapToolEdit):
         self.iface.editMenu().actions()[0].trigger()
 
         # remove last marker
-        if len(self.markers) > 0:
+        if self.markers:
             last_marker = self.markers.pop()
             self.canvas().scene().removeItem(last_marker)
 
@@ -231,7 +231,6 @@ class PointTool(QgsMapToolEdit):
             self.turn_off_snap()
         elif e.key() == Qt.Key_Escape:
             self.abort_tracing_process()
-            self.remove_last_anchor_point()
 
     def add_anchor_points(self, x1, y1, i1, j1):
         '''
@@ -488,8 +487,11 @@ class PointTool(QgsMapToolEdit):
         try:
             # send terminate signal to the task
             self.find_path_task.cancel()
+            self.find_path_task = None
         except RuntimeError:
             return
+        else:
+            self.remove_last_anchor_point()
             
 
     def redraw(self):
