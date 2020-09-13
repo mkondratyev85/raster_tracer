@@ -18,12 +18,26 @@ class State:
         Event when the user clicks on the map with the right button
         '''
 
+        # finish point path if it was last point
+        self.pointtool.anchors = []
+
+        # hide all markers
+        while self.pointtool.markers:
+            marker = self.pointtool.markers.pop()
+            self.pointtool.canvas().scene().removeItem(marker)
+
+        # hide rubber_band
+        self.pointtool.rubber_band.hide()
+
+        # change state
+        self.pointtool.change_state(WaitingFirstPointState)
+
     def click_lmb(self, mouseEvent, vlayer):
         '''
         Event when the user clicks on the map with the left button
         '''
 
-        self.pointtool.last_mouse_event_pos = mouseEvent.pos()
+        # self.pointtool.last_mouse_event_pos = mouseEvent.pos()
         # hide rubber_band
         self.pointtool.rubber_band.hide()
 
@@ -52,10 +66,7 @@ class State:
             return False
 
         i1, j1 = self.pointtool.to_indexes(x1, y1)
-
         self.pointtool.add_anchor_points(x1, y1, i1, j1)
-
-        self.current_point = x1, y1, i1, j1
 
         return True
 
@@ -74,7 +85,13 @@ class WaitingFirstPointState(State):
             return
 
         # change state
-        self.pointtool.change_state(WaitingMiddlePointState)
+        # self.pointtool.change_state(WaitingMiddlePointState)
+        self.pointtool.change_state(AutoFollowingLineState)
+
+    def click_rmb(self, mouseEvent, vlayer):
+        pass
+
+        
 
 
 class WaitingMiddlePointState(State):
@@ -91,33 +108,42 @@ class WaitingMiddlePointState(State):
         if super().click_lmb(mouseEvent, vlayer) is False:
             return
 
-        x1, y1, i1, j1 = self.current_point
+        x1, y1, i1, j1 = self.pointtool.anchors[-1]
 
         self.pointtool.trace(x1, y1, i1, j1, vlayer)
+        
+        #         ^
+        #         |
+        #         |
+        #         |
+        # this is where the bug with drawing extra line hides
 
         if True:
             self.pointtool.change_state(AutoFollowingLineState)
 
-            for _ in range(25):
+            for _ in range(5):
                 self.pointtool.state.begin_autofollowing(vlayer)
+                self.pointtool.redraw()
 
             self.pointtool.change_state(WaitingMiddlePointState)
 
     def click_rmb(self, mouseEvent, vlayer):
 
-        # finish point path if it was last point
-        self.pointtool.anchor_points = []
+        super().click_rmb(mouseEvent, vlayer)
 
-        # hide all markers
-        while self.pointtool.markers:
-            marker = self.pointtool.markers.pop()
-            self.pointtool.canvas().scene().removeItem(marker)
-
-        # hide rubber_band
-        self.pointtool.rubber_band.hide()
-
-        # change state
-        self.pointtool.change_state(WaitingFirstPointState)
+        # # finish point path if it was last point
+        # self.pointtool.anchors = []
+        #
+        # # hide all markers
+        # while self.pointtool.markers:
+        #     marker = self.pointtool.markers.pop()
+        #     self.pointtool.canvas().scene().removeItem(marker)
+        #
+        # # hide rubber_band
+        # self.pointtool.rubber_band.hide()
+        #
+        # # change state
+        # self.pointtool.change_state(WaitingFirstPointState)
 
 
 class AutoFollowingLineState(State):
@@ -126,13 +152,36 @@ class AutoFollowingLineState(State):
     perform auto-following of the line.
     '''
 
-    def begin_autofollowing(self, vlayer):
-        # x1, y1 = self.pointtool.anchor_points[-1]
-        i1, j1 = self.pointtool.anchor_points_ij[-1]
-        # x0, y0 = self.pointtool.anchor_points[-2]
-        i0, j0 = self.pointtool.anchor_points_ij[-2]
+    def click_lmb(self, mouseEvent, vlayer):
+        if super().click_lmb(mouseEvent, vlayer) is False:
+            return
+
+        # x1, y1, i1, j1 = self.pointtool.anchors[-1]
+
+        self.begin_autofollowing(vlayer, initial=True)
+
+        for _ in range(5):
+            self.begin_autofollowing(vlayer)
+            self.pointtool.redraw()
+            self.pointtool.update_rubber_band()
+         
+
+    def click_rmb(self, mouseEvent, vlayer):
+        super().click_rmb(mouseEvent, vlayer)
+
+    def begin_autofollowing(self, vlayer, initial=False):
+        _, _, i0, j0 = self.pointtool.anchors[-2]
+        _, _, i1, j1 = self.pointtool.anchors[-1]
+
+
         direction = atan2(j1 - j0, i1 - i0)
         distance = 5
+
+        if initial:
+            # if len(self.pointtool.anchors) == 2:
+            self.pointtool.remove_last_anchor_point()
+            i1, j1 = i0, j0
+
         points = self.search_near_points((i1, j1), direction, distance)
 
         costs = []
@@ -142,7 +191,6 @@ class AutoFollowingLineState(State):
             i2, j2 = point
             x2, y2 = self.pointtool.to_coords(i2, j2)
 
-            # self.pointtool.add_anchor_points(x2, y2, i2, j2)
 
             path, cost = self.pointtool.trace_over_image((i1, j1), (i2, j2))
             costs.append(cost)
@@ -156,10 +204,11 @@ class AutoFollowingLineState(State):
         i, j = best_point
         x, y = self.pointtool.to_coords(i, j)
 
-        self.pointtool.add_anchor_points(x, y, i, j)
-        self.pointtool.draw_path(best_path, vlayer)
+        # if initial:
+        #     best_path.pop(0)
 
-        # self.pointtool.trace(x, y, i, j, vlayer)
+        self.pointtool.add_anchor_points(x, y, i, j)
+        self.pointtool.draw_path(best_path, vlayer, was_tracing=True)
 
     def search_near_points(self, point, direction, distance):
         '''

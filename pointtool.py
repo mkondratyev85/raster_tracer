@@ -1,3 +1,5 @@
+from collections import namedtuple
+
 from qgis.core import QgsPointXY, QgsPoint, QgsGeometry, QgsFeature, \
                       QgsVectorLayer, QgsProject, QgsWkbTypes, QgsApplication
 from qgis.gui import QgsMapToolEmitPoint, QgsMapToolEdit, \
@@ -19,6 +21,9 @@ from .pointtool_states import (WaitingFirstPointState,
 
 from .exceptions import OutsideMapError
 
+# An point on the map where the user clicked along the line
+Anchor = namedtuple('Anchor', ['x', 'y', 'i', 'j'])
+
 
 class PointTool(QgsMapToolEdit):
 
@@ -27,10 +32,15 @@ class PointTool(QgsMapToolEdit):
         self.deactivated.emit()
 
     def __init__(self, canvas, iface, turn_off_snap, smooth=False):
-        self.last_mouse_event_pos = None
+
         self.iface = iface
-        self.anchor_points = []
-        self.anchor_points_ij = []
+
+        # list of Anchors for current line
+        self.anchors = []
+
+        # for keeping track of mouse event for rubber band updating
+        self.last_mouse_event_pos = None
+
         self.is_tracing = True
         self.turn_off_snap = turn_off_snap
         self.smooth_line = smooth
@@ -57,7 +67,7 @@ class PointTool(QgsMapToolEdit):
         self.marker_snap = QgsVertexMarker(self.canvas())
         self.marker_snap.setColor(QColor(255, 0, 255))
 
-        globals()['find_path_task'] = None
+        self.find_path_task = []
 
         self.change_state(WaitingFirstPointState)
 
@@ -204,9 +214,8 @@ class PointTool(QgsMapToolEdit):
             self.canvas().scene().removeItem(last_marker)
 
         # remove last anchor
-        if len(self.anchor_points) > 0:
-            self.anchor_points.pop()
-            self.anchor_points_ij.pop()
+        if self.anchors:
+            self.anchors.pop()
 
         self.update_rubber_band()
         self.redraw()
@@ -229,17 +238,21 @@ class PointTool(QgsMapToolEdit):
         Adds anchor points and markers to self.
         '''
 
-        self.anchor_points.append((x1, y1))
-        self.anchor_points_ij.append((i1, j1))
+        anchor = Anchor(x1, y1, i1, j1)
+        self.anchors.append(anchor)
+
         marker = QgsVertexMarker(self.canvas())
         marker.setCenter(QgsPointXY(x1, y1))
         self.markers.append(marker)
 
-    def trace_over_image(self, start, goal):
+    def trace_over_image(self,
+                         start,
+                         goal,
+                         do_it_as_task=False,
+                         vlayer=None):
         '''
         performs tracing
         '''
-
 
         i0, j0 = start
         i1, j1 = goal
@@ -258,11 +271,27 @@ class PointTool(QgsMapToolEdit):
         else:
             grid = self.grid_changed
 
-        path, cost = FindPathFunction(grid.astype(np.dtype('l')),
-                                      (i0, j0),
-                                      (i1, j1),
-                                      )
-        return path, cost
+        if do_it_as_task:
+            # dirty hack to avoid QGIS crashing
+            self.find_path_task = FindPathTask(
+                grid.astype(np.dtype('l')),
+                start,
+                goal,
+                self.draw_path,
+                vlayer,
+                )
+
+            QgsApplication.taskManager().addTask(
+                self.find_path_task,
+                )
+            self.tracking_is_active = True
+        else:
+            path, cost = FindPathFunction(
+                grid.astype(np.dtype('l')),
+                (i0, j0),
+                (i1, j1),
+                )
+            return path, cost
 
     def trace(self, x1, y1, i1, j1, vlayer):
         '''
@@ -272,46 +301,22 @@ class PointTool(QgsMapToolEdit):
         '''
 
         if self.is_tracing:
-
             if self.snap_tolerance is not None:
                 try:
                     i1, j1 = self.snap(i1, j1)
                 except OutsideMapError:
                     return
-                x1, y1 = self.to_coords(i1, j1)
-            r, g, b, = self.sample
-            try:
-                r0 = r[i1, j1]
-                g0 = g[i1, j1]
-                b0 = b[i1, j1]
-            except IndexError:
-                self.display_message(
-                    "Outside Map",
-                    "Clicked outside of raster layer",
-                    level='Warning',
-                    duration=1,
-                    )
-                return
 
-            if self.grid_changed is None:
-                grid = np.abs((r0 - r) ** 2 + (g0 - g) ** 2 + (b0 - b) ** 2)
-            else:
-                grid = self.grid_changed
-            i0, j0 = self.anchor_points_ij[-2]
+            _, _, i0, j0 = self.anchors[-2]
             start_point = i0, j0
             end_point = i1, j1
-
-            # dirty hack to avoid QGIS crashing
-            globals()['find_path_task'] = FindPathTask(
-                grid.astype(np.dtype('l')),
-                start_point,
-                end_point,
-                self.draw_path,
-                vlayer,
-                )
-            QgsApplication.taskManager().addTask(find_path_task)
-            self.tracking_is_active = True
-
+            try:
+                self.trace_over_image(start_point,
+                                      end_point,
+                                      do_it_as_task=True,
+                                      vlayer=vlayer)
+            except OutsideMapError:
+                pass
         else:
             self.draw_path(
                 None,
@@ -402,22 +407,24 @@ class PointTool(QgsMapToolEdit):
             current_last_point = self.to_coords(*path[-1])
             path_ref = [self.to_coords_provider(i, j) for i, j in path]
         else:
-            x0, y0 = self.anchor_points[-2]
+            x0, y0, _, _ = self.anchors[-2]
             path_ref = [self.to_coords_provider2(x0, y0),
                         self.to_coords_provider2(x1, y1)]
             current_last_point = (x1, y1)
 
-        if len(self.anchor_points) == 2:
+        if len(self.anchors) == 2:
             vlayer.beginEditCommand("Adding new line")
             add_feature_to_vlayer(vlayer, path_ref)
             vlayer.endEditCommand()
         else:
-            last_point = self.to_coords_provider2(*self.anchor_points[-2])
+            x0, y0, _, _ = self.anchors[-2]
+            last_point = self.to_coords_provider2(x0, y0)
             path_ref = [last_point] + path_ref[1:]
             vlayer.beginEditCommand("Adding new segment to the line")
             add_to_last_feature(vlayer, path_ref)
             vlayer.endEditCommand()
-        self.anchor_points[-1] = current_last_point
+        _, _, current_last_point_i, current_last_point_j = self.anchors[-1]
+        self.anchors[-1] = current_last_point[0], current_last_point[1], current_last_point_i, current_last_point_j
         self.redraw()
         self.tracking_is_active = False
 
@@ -427,9 +434,10 @@ class PointTool(QgsMapToolEdit):
         if self.last_mouse_event_pos is None:
             return
 
-        if len(self.anchor_points) < 1:
+        if not self.anchors:
             return
-        x0, y0 = self.anchor_points[-1]
+
+        x0, y0, _, _ = self.anchors[-1]
         qgsPoint = self.toMapCoordinates(self.last_mouse_event_pos)
         x1, y1 = qgsPoint.x(), qgsPoint.y()
         points = [QgsPoint(x0, y0), QgsPoint(x1, y1)]
@@ -447,7 +455,10 @@ class PointTool(QgsMapToolEdit):
                                        self.vlayer)
 
     def canvasMoveEvent(self, mouseEvent):
-        self.last_mouse_event_pos = mouseEvent.pos()
+
+        # we need at least one point to draw
+        if not self.anchors:
+            return
 
         if self.snap_tolerance is not None and self.is_tracing:
             qgsPoint = self.toMapCoordinates(mouseEvent.pos())
@@ -462,25 +473,21 @@ class PointTool(QgsMapToolEdit):
             x1, y1 = self.to_coords(i1, j1)
             self.marker_snap.setCenter(QgsPointXY(x1, y1))
 
-        # we need at least one point to draw
-        if len(self.anchor_points) < 1:
-            self.redraw()
-            return
-
+        self.last_mouse_event_pos = mouseEvent.pos()
         self.update_rubber_band()
         self.redraw()
 
     def abort_tracing_process(self):
 
         # check if we have any tasks
-        if globals()['find_path_task'] is None:
+        if self.find_path_task is None:
             return
 
         self.tracking_is_active = False
 
         try:
             # send terminate signal to the task
-            globals()['find_path_task'].cancel()
+            self.find_path_task.cancel()
         except RuntimeError:
             return
             
@@ -494,6 +501,7 @@ class PointTool(QgsMapToolEdit):
             if vlayer is None:
                 return
             vlayer.triggerRepaint()
+            self.iface.mapCanvas().refresh()
         else:
             self.iface.mapCanvas().refresh()
 

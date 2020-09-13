@@ -152,7 +152,6 @@ class FindPathTask(QgsTask):
         if result:
             self.callback(self.path, self.vlayer)
 
-        print('aaa')
 
     def cancel(self):
         '''
