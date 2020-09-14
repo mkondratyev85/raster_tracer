@@ -193,7 +193,7 @@ class PointTool(QgsMapToolEdit):
         self.to_coords_provider = to_coords_provider
         self.to_coords_provider2 = to_coords_provider2
 
-    def remove_last_anchor_point(self):
+    def remove_last_anchor_point(self, undo_edit=True):
         '''
         Removes last anchor point and last marker point
         '''
@@ -205,8 +205,9 @@ class PointTool(QgsMapToolEdit):
         if vlayer.featureCount() < 1:
             return
 
-        # it's a very ugly way of triggering single undo event
-        self.iface.editMenu().actions()[0].trigger()
+        if undo_edit:
+            # it's a very ugly way of triggering single undo event
+            self.iface.editMenu().actions()[0].trigger()
 
         # remove last marker
         if self.markers:
@@ -492,7 +493,6 @@ class PointTool(QgsMapToolEdit):
             return
         else:
             self.remove_last_anchor_point()
-            
 
     def redraw(self):
         # If caching is enabled, a simple canvas refresh might not be

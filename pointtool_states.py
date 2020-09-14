@@ -179,7 +179,7 @@ class AutoFollowingLineState(State):
 
         if initial:
             # if len(self.pointtool.anchors) == 2:
-            self.pointtool.remove_last_anchor_point()
+            self.pointtool.remove_last_anchor_point(undo_edit=False)
             i1, j1 = i0, j0
 
         points = self.search_near_points((i1, j1), direction, distance)
