@@ -1,7 +1,8 @@
 from collections import namedtuple
 
 from qgis.core import QgsPointXY, QgsPoint, QgsGeometry, QgsFeature, \
-                      QgsVectorLayer, QgsProject, QgsWkbTypes, QgsApplication
+                      QgsVectorLayer, QgsProject, QgsWkbTypes, QgsApplication, \
+                      QgsRectangle
 from qgis.gui import QgsMapToolEmitPoint, QgsMapToolEdit, \
                      QgsRubberBand, QgsVertexMarker, QgsMapTool
 from qgis.PyQt.QtCore import Qt
@@ -70,6 +71,8 @@ class PointTool(QgsMapToolEdit):
         self.find_path_task = None
 
         self.change_state(WaitingFirstPointState)
+
+        self.ready = True
 
     def display_message(self,
                         title,
@@ -412,6 +415,7 @@ class PointTool(QgsMapToolEdit):
                         self.to_coords_provider2(x1, y1)]
             current_last_point = (x1, y1)
 
+        self.ready = False
         if len(self.anchors) == 2:
             vlayer.beginEditCommand("Adding new line")
             add_feature_to_vlayer(vlayer, path_ref)
@@ -503,9 +507,29 @@ class PointTool(QgsMapToolEdit):
             if vlayer is None:
                 return
             vlayer.triggerRepaint()
-            self.iface.mapCanvas().refresh()
-        else:
-            self.iface.mapCanvas().refresh()
+
+        self.iface.mapCanvas().refresh()
+        # self.iface.mapCanvas().mapCanvasRefreshed.connect(self.setReady)
+        QgsApplication.processEvents()
+
+        # print('ready')
+    #     self.ready = True
+    #
+    # def setReady(self):
+    #     self.ready = True
+
+    def pan(self, x, y):
+        canvas = self.canvas
+        currExt = self.iface.mapCanvas().extent() #canvas.extent()
+        canvasCenter = currExt.center()
+        dx = x - canvasCenter.x()
+        dy = y - canvasCenter.y()
+        xMin = currExt.xMinimum() + dx
+        xMax = currExt.xMaximum() + dx
+        yMin = currExt.yMinimum() + dy
+        yMax = currExt.yMaximum() + dy
+        newRect = QgsRectangle(xMin,yMin,xMax,yMax)
+        self.iface.mapCanvas().setExtent(newRect)
 
 
 def add_to_last_feature(vlayer, points):

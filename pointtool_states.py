@@ -156,29 +156,29 @@ class AutoFollowingLineState(State):
         if super().click_lmb(mouseEvent, vlayer) is False:
             return
 
-        # x1, y1, i1, j1 = self.pointtool.anchors[-1]
+        self.follow_next_segment(vlayer, initial=True)
 
-        self.begin_autofollowing(vlayer, initial=True)
-
-        for _ in range(5):
-            self.begin_autofollowing(vlayer)
+        for _ in range(25):
+            self.follow_next_segment(vlayer)
+            # while True:
+            #     if self.pointtool.ready is True:
+            #         break
             self.pointtool.redraw()
             self.pointtool.update_rubber_band()
+            # print('a')
          
 
     def click_rmb(self, mouseEvent, vlayer):
         super().click_rmb(mouseEvent, vlayer)
 
-    def begin_autofollowing(self, vlayer, initial=False):
+    def follow_next_segment(self, vlayer, initial=False):
         _, _, i0, j0 = self.pointtool.anchors[-2]
         _, _, i1, j1 = self.pointtool.anchors[-1]
-
 
         direction = atan2(j1 - j0, i1 - i0)
         distance = 5
 
         if initial:
-            # if len(self.pointtool.anchors) == 2:
             self.pointtool.remove_last_anchor_point(undo_edit=False)
             i1, j1 = i0, j0
 
@@ -190,7 +190,6 @@ class AutoFollowingLineState(State):
         for point in points:
             i2, j2 = point
             x2, y2 = self.pointtool.to_coords(i2, j2)
-
 
             path, cost = self.pointtool.trace_over_image((i1, j1), (i2, j2))
             costs.append(cost)
@@ -204,11 +203,14 @@ class AutoFollowingLineState(State):
         i, j = best_point
         x, y = self.pointtool.to_coords(i, j)
 
-        # if initial:
-        #     best_path.pop(0)
+        if len(self.pointtool.anchors)>1:
+            self.pointtool.draw_path(best_path, vlayer, was_tracing=True)
+            self.pointtool.add_anchor_points(x, y, i, j)
+        else:
+            self.pointtool.add_anchor_points(x, y, i, j)
+            self.pointtool.draw_path(best_path, vlayer, was_tracing=True)
 
-        self.pointtool.add_anchor_points(x, y, i, j)
-        self.pointtool.draw_path(best_path, vlayer, was_tracing=True)
+        self.pointtool.pan(x, y)
 
     def search_near_points(self, point, direction, distance):
         '''
