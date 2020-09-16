@@ -1,3 +1,7 @@
+'''
+Main functionality of raster tracer.
+'''
+
 from enum import Enum
 from collections import namedtuple
 import numpy as np
@@ -15,11 +19,7 @@ from qgis.core import Qgis
 from .astar import FindPathTask, FindPathFunction
 from .line_simplification import smooth, simplify
 from .utils import get_whole_raster, PossiblyIndexedImageError
-
-from .pointtool_states import (WaitingFirstPointState,
-                               WaitingMiddlePointState,
-                               )
-
+from .pointtool_states import WaitingFirstPointState
 from .exceptions import OutsideMapError
 
 # An point on the map where the user clicked along the line
@@ -56,7 +56,6 @@ class TracingModes(Enum):
             index = 0
         return members[index]
 
-
     def is_tracing(self):
         '''
         Returns True if mode is PATH
@@ -79,12 +78,23 @@ RUBBERBAND_LINE_STYLES = {
 
 
 class PointTool(QgsMapToolEdit):
+    '''
+    Implementation of interactions of the user with the main map.
+    Will called every time the user clicks on the map
+    or hovers the mouse over the map.
+    '''
 
     def deactivate(self):
         QgsMapTool.deactivate(self)
         self.deactivated.emit()
 
     def __init__(self, canvas, iface, turn_off_snap, smooth=False):
+        '''
+        canvas - link to the QgsCanvas of the application
+        iface - link to the Qgis Interface
+        turn_off_snap - flag sets snapping to the nearest color
+        smooth - flag sets smoothing of the traced path
+        '''
 
         self.iface = iface
 
@@ -149,8 +159,6 @@ class PointTool(QgsMapToolEdit):
             message,
             LEVELS[level],
             duration)
-
-
 
     def change_state(self, state):
         self.state = state(self)
@@ -277,15 +285,18 @@ class PointTool(QgsMapToolEdit):
             self.redraw()
 
     def keyPressEvent(self, e):
-        # delete last segment if backspace is pressed
         if e.key() == Qt.Key_Backspace or e.key() == Qt.Key_B:
+            # delete last segment if backspace is pressed
             self.remove_last_anchor_point()
         elif e.key() == Qt.Key_A:
+            # change tracing mode
             self.tracing_mode = self.tracing_mode.next()
             self.update_rubber_band()
         elif e.key() == Qt.Key_S:
+            # toggle snap mode
             self.turn_off_snap()
         elif e.key() == Qt.Key_Escape:
+            # Abort tracing process
             self.abort_tracing_process()
 
     def add_anchor_points(self, x1, y1, i1, j1):
@@ -416,6 +427,10 @@ class PointTool(QgsMapToolEdit):
         return i+delta_i, j+delta_j
 
     def canvasReleaseEvent(self, mouseEvent):
+        '''
+        Method where the actual tracing is performed
+        after the user clicked on the map
+        '''
 
         vlayer = self.get_current_vector_layer()
 
@@ -446,8 +461,6 @@ class PointTool(QgsMapToolEdit):
             self.state.click_lmb(mouseEvent, vlayer)
 
         return
-
-
 
     def draw_path(self, path, vlayer, was_tracing=True,\
                   x1=None, y1=None):
@@ -515,6 +528,10 @@ class PointTool(QgsMapToolEdit):
             )
 
     def canvasMoveEvent(self, mouseEvent):
+        '''
+        Store the mouse position for the correct
+        updating of the rubber band
+        '''
 
         # we need at least one point to draw
         if not self.anchors:
@@ -538,6 +555,10 @@ class PointTool(QgsMapToolEdit):
         self.redraw()
 
     def abort_tracing_process(self):
+        '''
+        Terminate background process of tracing raster
+        after the user hits Esc.
+        '''
 
         # check if we have any tasks
         if self.find_path_task is None:
@@ -569,10 +590,11 @@ class PointTool(QgsMapToolEdit):
         self.iface.mapCanvas().refresh()
         QgsApplication.processEvents()
 
-
     def pan(self, x, y):
-        canvas = self.canvas
-        currExt = self.iface.mapCanvas().extent() #canvas.extent()
+        '''
+        Move the canvas to the x, y position
+        '''
+        currExt = self.iface.mapCanvas().extent()
         canvasCenter = currExt.center()
         dx = x - canvasCenter.x()
         dy = y - canvasCenter.y()
@@ -580,12 +602,17 @@ class PointTool(QgsMapToolEdit):
         xMax = currExt.xMaximum() + dx
         yMin = currExt.yMinimum() + dy
         yMax = currExt.yMaximum() + dy
-        newRect = QgsRectangle(xMin,yMin,xMax,yMax)
+        newRect = QgsRectangle(xMin, yMin, xMax, yMax)
         self.iface.mapCanvas().setExtent(newRect)
 
 
 def add_to_last_feature(vlayer, points):
-    features = [f for f in vlayer.getFeatures()]
+    '''
+    Adds points to the last line feature in the vlayer
+    vlayer - QgsLayer of type MultiLine string
+    points - list of points
+    '''
+    features = list(vlayer.getFeatures())
     last_feature = features[-1]
     fid = last_feature.id()
     geom = last_feature.geometry()
@@ -595,8 +622,10 @@ def add_to_last_feature(vlayer, points):
 
 
 def add_feature_to_vlayer(vlayer, points):
+    '''
+    Adds new line feature to the vlayer
+    '''
     feat = QgsFeature(vlayer.fields())
     polyline = [QgsPoint(x, y) for x, y in points]
     feat.setGeometry(QgsGeometry.fromPolyline(polyline))
     vlayer.addFeature(feat)
-
