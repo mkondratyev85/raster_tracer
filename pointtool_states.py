@@ -2,7 +2,11 @@
 Module contains States for pointtool.
 '''
 
-from .exceptions import OutsideMapError
+from math import atan2, cos, sin, radians
+
+from qgis.core import QgsApplication
+
+from .autotrace import AutotraceSubTask
 
 
 class State:
@@ -18,12 +22,26 @@ class State:
         Event when the user clicks on the map with the right button
         '''
 
+        # finish point path if it was last point
+        self.pointtool.anchors = []
+
+        # hide all markers
+        while self.pointtool.markers:
+            marker = self.pointtool.markers.pop()
+            self.pointtool.canvas().scene().removeItem(marker)
+
+        # hide rubber_band
+        self.pointtool.rubber_band.hide()
+
+        # change state
+        self.pointtool.change_state(WaitingFirstPointState)
+
     def click_lmb(self, mouseEvent, vlayer):
         '''
         Event when the user clicks on the map with the left button
         '''
 
-        self.pointtool.last_mouse_event_pos = mouseEvent.pos()
+        # self.pointtool.last_mouse_event_pos = mouseEvent.pos()
         # hide rubber_band
         self.pointtool.rubber_band.hide()
 
@@ -52,10 +70,7 @@ class State:
             return False
 
         i1, j1 = self.pointtool.to_indexes(x1, y1)
-
         self.pointtool.add_anchor_points(x1, y1, i1, j1)
-
-        self.current_point = x1, y1, i1, j1
 
         return True
 
@@ -75,11 +90,15 @@ class WaitingFirstPointState(State):
 
         # change state
         self.pointtool.change_state(WaitingMiddlePointState)
+        # self.pointtool.change_state(AutoFollowingLineState)
+
+    def click_rmb(self, mouseEvent, vlayer):
+        pass
 
 
 class WaitingMiddlePointState(State):
     '''
-    State of waithing the user to click on the next point in the line.
+    State of waiting the user to click on the next point in the line.
     Is active when the user is already clicked on at least one point.
     After the user clicks on the left mouse button it keeps the state.
     After the user clicks on the right mouse button it finishes the line and
@@ -91,23 +110,112 @@ class WaitingMiddlePointState(State):
         if super().click_lmb(mouseEvent, vlayer) is False:
             return
 
-        x1, y1, i1, j1 = self.current_point
+        x1, y1, i1, j1 = self.pointtool.anchors[-1]
 
-        self.pointtool.trace(x1, y1, i1, j1, vlayer)
+        if self.pointtool.tracing_mode.is_auto():
+
+            # perform autotrace
+            self.autotrace_task = AutotraceSubTask(
+                self.pointtool,
+                vlayer,
+                clicked_point=self.pointtool.anchors[-1],
+                )
+            # self.pointtool.remove_last_anchor_point(undo_edit=False, redraw=False)
+
+            QgsApplication.taskManager().addTask(
+                self.autotrace_task,
+                )
+
+        else:
+            self.pointtool.trace(x1, y1, i1, j1, vlayer)
 
     def click_rmb(self, mouseEvent, vlayer):
 
-        # finish point path if it was last point
-        self.pointtool.anchor_points = []
+        super().click_rmb(mouseEvent, vlayer)
 
-        # hide all markers
-        while self.pointtool.markers:
-            marker = self.pointtool.markers.pop()
-            self.pointtool.canvas().scene().removeItem(marker)
 
-        # hide rubber_band
-        self.pointtool.rubber_band.hide()
+class AutoFollowingLineState(State):
+    '''
+    This state is active when raster_tracer is trying to
+    perform auto-following of the line.
+    '''
 
-        # change state
-        self.pointtool.change_state(WaitingFirstPointState)
+    def click_lmb(self, mouseEvent, vlayer):
+        if super().click_lmb(mouseEvent, vlayer) is False:
+            return
 
+        self.follow_next_segment(vlayer, initial=True)
+
+        for _ in range(25):
+            self.follow_next_segment(vlayer)
+            # while True:
+            #     if self.pointtool.ready is True:
+            #         break
+            self.pointtool.redraw()
+            self.pointtool.update_rubber_band()
+            # print('a')
+         
+
+    def click_rmb(self, mouseEvent, vlayer):
+        super().click_rmb(mouseEvent, vlayer)
+
+    def follow_next_segment(self, vlayer, initial=False):
+        _, _, i0, j0 = self.pointtool.anchors[-2]
+        _, _, i1, j1 = self.pointtool.anchors[-1]
+
+        direction = atan2(j1 - j0, i1 - i0)
+        distance = 5
+
+        if initial:
+            self.pointtool.remove_last_anchor_point(undo_edit=False)
+            i1, j1 = i0, j0
+
+        points = self.search_near_points((i1, j1), direction, distance)
+
+        costs = []
+        paths = []
+
+        for point in points:
+            i2, j2 = point
+            x2, y2 = self.pointtool.to_coords(i2, j2)
+
+            path, cost = self.pointtool.trace_over_image((i1, j1), (i2, j2))
+            costs.append(cost)
+            paths.append(path)
+
+        min_cost = min(costs)
+        min_cost_index = costs.index(min_cost)
+
+        best_point = points[min_cost_index]
+        best_path = paths[min_cost_index]
+        i, j = best_point
+        x, y = self.pointtool.to_coords(i, j)
+
+        if len(self.pointtool.anchors)>1:
+            self.pointtool.draw_path(best_path, vlayer, was_tracing=True)
+            self.pointtool.add_anchor_points(x, y, i, j)
+        else:
+            self.pointtool.add_anchor_points(x, y, i, j)
+            self.pointtool.draw_path(best_path, vlayer, was_tracing=True)
+
+        self.pointtool.pan(x, y)
+
+    def search_near_points(self, point, direction, distance):
+        '''
+        Returns list of points near last point in the given direction,
+        at a given distance with given space between points.
+        '''
+
+        points = []
+
+        i1, j1 = point
+
+        angles = [direction + radians(i) for i in range(-60, 60, 10)]
+
+        for angle in angles:
+            i2 = i1 + distance * cos(angle)
+            j2 = j1 + distance * sin(angle)
+
+            points.append((int(i2), int(j2)))
+
+        return points
