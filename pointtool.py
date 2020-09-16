@@ -1,4 +1,6 @@
+from enum import Enum
 from collections import namedtuple
+import numpy as np
 
 from qgis.core import QgsPointXY, QgsPoint, QgsGeometry, QgsFeature, \
                       QgsVectorLayer, QgsProject, QgsWkbTypes, QgsApplication, \
@@ -8,8 +10,6 @@ from qgis.gui import QgsMapToolEmitPoint, QgsMapToolEdit, \
 from qgis.PyQt.QtCore import Qt
 from qgis.PyQt.QtGui import QColor
 from qgis.core import Qgis
-
-import numpy as np
 
 
 from .astar import FindPathTask, FindPathFunction
@@ -24,6 +24,58 @@ from .exceptions import OutsideMapError
 
 # An point on the map where the user clicked along the line
 Anchor = namedtuple('Anchor', ['x', 'y', 'i', 'j'])
+
+# Flag for experimental Autofollowing mode
+ALLOW_AUTO_FOLLOWING = False
+
+
+class TracingModes(Enum):
+    '''
+    Possible Tracing Modes for Pointtool.
+    LINE - straight line from start to end.
+    PATH - tracing along color from start to end.
+    AUTO - auto tracing mode along color in the given direction.
+    '''
+
+    LINE = 1
+    PATH = 2
+    AUTO = 3
+
+    def next(self):
+        '''
+        Switches between LINE and PATH
+        '''
+        cls = self.__class__
+        members = list(cls)
+
+        if not ALLOW_AUTO_FOLLOWING:
+            return members[0] if self.value == 2 else members[1]
+
+        index = members.index(self) + 1
+        if index >= len(members):
+            index = 0
+        return members[index]
+
+
+    def is_tracing(self):
+        '''
+        Returns True if mode is PATH
+        '''
+        return True if self.value == 2 else False
+
+    def is_auto(self):
+        '''
+        Returns True if mode is PATH
+        '''
+        return True if self.value == 3 else False
+
+
+# Line styles for the rubber band
+RUBBERBAND_LINE_STYLES = {
+    TracingModes.PATH: Qt.DotLine,
+    TracingModes.LINE: Qt.SolidLine,
+    TracingModes.AUTO: Qt.DashDotLine,
+    }
 
 
 class PointTool(QgsMapToolEdit):
@@ -42,7 +94,8 @@ class PointTool(QgsMapToolEdit):
         # for keeping track of mouse event for rubber band updating
         self.last_mouse_event_pos = None
 
-        self.is_tracing = True
+        self.tracing_mode = TracingModes.PATH
+
         self.turn_off_snap = turn_off_snap
         self.smooth_line = smooth
 
@@ -71,8 +124,6 @@ class PointTool(QgsMapToolEdit):
         self.find_path_task = None
 
         self.change_state(WaitingFirstPointState)
-
-        self.ready = True
 
     def display_message(self,
                         title,
@@ -196,7 +247,7 @@ class PointTool(QgsMapToolEdit):
         self.to_coords_provider = to_coords_provider
         self.to_coords_provider2 = to_coords_provider2
 
-    def remove_last_anchor_point(self, undo_edit=True):
+    def remove_last_anchor_point(self, undo_edit=True, redraw=True):
         '''
         Removes last anchor point and last marker point
         '''
@@ -221,15 +272,16 @@ class PointTool(QgsMapToolEdit):
         if self.anchors:
             self.anchors.pop()
 
-        self.update_rubber_band()
-        self.redraw()
+        if redraw:
+            self.update_rubber_band()
+            self.redraw()
 
     def keyPressEvent(self, e):
         # delete last segment if backspace is pressed
         if e.key() == Qt.Key_Backspace or e.key() == Qt.Key_B:
             self.remove_last_anchor_point()
         elif e.key() == Qt.Key_A:
-            self.is_tracing = not self.is_tracing
+            self.tracing_mode = self.tracing_mode.next()
             self.update_rubber_band()
         elif e.key() == Qt.Key_S:
             self.turn_off_snap()
@@ -303,7 +355,7 @@ class PointTool(QgsMapToolEdit):
         straight line.
         '''
 
-        if self.is_tracing:
+        if self.tracing_mode.is_tracing():
             if self.snap_tolerance is not None:
                 try:
                     i1, j1 = self.snap(i1, j1)
@@ -333,7 +385,7 @@ class PointTool(QgsMapToolEdit):
     def snap(self, i, j):
         if self.snap_tolerance is None:
             return i, j
-        if not self.is_tracing:
+        if not self.tracing_mode.is_tracing():
             return i, j
         if self.grid_changed is None:
             return i, j
@@ -448,15 +500,19 @@ class PointTool(QgsMapToolEdit):
 
         self.rubber_band.setColor(QColor(255, 0, 0))
         self.rubber_band.setWidth(3)
-        if self.is_tracing:
-            self.rubber_band.setLineStyle(Qt.DotLine)
-        else:
-            self.rubber_band.setLineStyle(Qt.SolidLine)
+
+        self.rubber_band.setLineStyle(
+            RUBBERBAND_LINE_STYLES[self.tracing_mode],
+            )
+
         vlayer = self.get_current_vector_layer()
         if vlayer is None:
             return
-        self.rubber_band.setToGeometry(QgsGeometry.fromPolyline(points),
-                                       self.vlayer)
+
+        self.rubber_band.setToGeometry(
+            QgsGeometry.fromPolyline(points),
+            self.vlayer,
+            )
 
     def canvasMoveEvent(self, mouseEvent):
 
@@ -464,7 +520,7 @@ class PointTool(QgsMapToolEdit):
         if not self.anchors:
             return
 
-        if self.snap_tolerance is not None and self.is_tracing:
+        if self.snap_tolerance is not None and self.tracing_mode.is_tracing():
             qgsPoint = self.toMapCoordinates(mouseEvent.pos())
             x1, y1 = qgsPoint.x(), qgsPoint.y()
             # i, j = get_indxs_from_raster_coords(self.geo_ref, x1, y1)
@@ -496,7 +552,9 @@ class PointTool(QgsMapToolEdit):
         except RuntimeError:
             return
         else:
-            self.remove_last_anchor_point()
+            self.remove_last_anchor_point(
+                    undo_edit=False,
+                    )
 
     def redraw(self):
         # If caching is enabled, a simple canvas refresh might not be
@@ -509,14 +567,8 @@ class PointTool(QgsMapToolEdit):
             vlayer.triggerRepaint()
 
         self.iface.mapCanvas().refresh()
-        # self.iface.mapCanvas().mapCanvasRefreshed.connect(self.setReady)
         QgsApplication.processEvents()
 
-        # print('ready')
-    #     self.ready = True
-    #
-    # def setReady(self):
-    #     self.ready = True
 
     def pan(self, x, y):
         canvas = self.canvas

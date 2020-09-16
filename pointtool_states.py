@@ -4,6 +4,10 @@ Module contains States for pointtool.
 
 from math import atan2, cos, sin, radians
 
+from qgis.core import QgsApplication
+
+from .autotrace import AutotraceSubTask
+
 
 class State:
     '''
@@ -85,18 +89,16 @@ class WaitingFirstPointState(State):
             return
 
         # change state
-        # self.pointtool.change_state(WaitingMiddlePointState)
-        self.pointtool.change_state(AutoFollowingLineState)
+        self.pointtool.change_state(WaitingMiddlePointState)
+        # self.pointtool.change_state(AutoFollowingLineState)
 
     def click_rmb(self, mouseEvent, vlayer):
         pass
 
-        
-
 
 class WaitingMiddlePointState(State):
     '''
-    State of waithing the user to click on the next point in the line.
+    State of waiting the user to click on the next point in the line.
     Is active when the user is already clicked on at least one point.
     After the user clicks on the left mouse button it keeps the state.
     After the user clicks on the right mouse button it finishes the line and
@@ -110,40 +112,26 @@ class WaitingMiddlePointState(State):
 
         x1, y1, i1, j1 = self.pointtool.anchors[-1]
 
-        self.pointtool.trace(x1, y1, i1, j1, vlayer)
-        
-        #         ^
-        #         |
-        #         |
-        #         |
-        # this is where the bug with drawing extra line hides
+        if self.pointtool.tracing_mode.is_auto():
 
-        if True:
-            self.pointtool.change_state(AutoFollowingLineState)
+            # perform autotrace
+            self.autotrace_task = AutotraceSubTask(
+                self.pointtool,
+                vlayer,
+                clicked_point=self.pointtool.anchors[-1],
+                )
+            # self.pointtool.remove_last_anchor_point(undo_edit=False, redraw=False)
 
-            for _ in range(5):
-                self.pointtool.state.begin_autofollowing(vlayer)
-                self.pointtool.redraw()
+            QgsApplication.taskManager().addTask(
+                self.autotrace_task,
+                )
 
-            self.pointtool.change_state(WaitingMiddlePointState)
+        else:
+            self.pointtool.trace(x1, y1, i1, j1, vlayer)
 
     def click_rmb(self, mouseEvent, vlayer):
 
         super().click_rmb(mouseEvent, vlayer)
-
-        # # finish point path if it was last point
-        # self.pointtool.anchors = []
-        #
-        # # hide all markers
-        # while self.pointtool.markers:
-        #     marker = self.pointtool.markers.pop()
-        #     self.pointtool.canvas().scene().removeItem(marker)
-        #
-        # # hide rubber_band
-        # self.pointtool.rubber_band.hide()
-        #
-        # # change state
-        # self.pointtool.change_state(WaitingFirstPointState)
 
 
 class AutoFollowingLineState(State):
