@@ -6,7 +6,7 @@
 name=Raster Tracer
 qgisMinimumVersion=3.0
 description=This plugin allows user to automaticaly trace lineal features of the underlaying raster map, simply by clicking on knots of lines on map.
-version=0.2.0
+version=0.3.0
 author=Mikhail Kondratyev
 email=mkondratyev85@gmail.com
 
@@ -20,16 +20,18 @@ repository=https://github.com/mkondratyev85/raster_tracer/
 
 hasProcessingProvider=no
 # Uncomment the following line and add your changelog:
-changelog=0.2.0
+changelog=0.3.0
+    -- Tracing is on the background. No freezing of QGgis anymore (#22)
+    0.2.0
     -- Make smoothing optional (#15)
     -- Warn the user when geometry type is not MultiLineString (#7, #13)
     0.1.1
-    -- Update in details and homepage adress
+    -- Update in details and homepage address
     0.1
     -- Initial version
 
 # Tags are comma separated with spaces allowed
-tags=python
+tags=python, digitizing, raster, vector
 
 homepage=https://github.com/mkondratyev85/raster_tracer/
 category=Plugins
