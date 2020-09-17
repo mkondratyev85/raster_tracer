@@ -267,10 +267,6 @@ class PointTool(QgsMapToolEdit):
         if vlayer.featureCount() < 1:
             return
 
-        if undo_edit:
-            # it's a very ugly way of triggering single undo event
-            self.iface.editMenu().actions()[0].trigger()
-
         # remove last marker
         if self.markers:
             last_marker = self.markers.pop()
@@ -279,6 +275,10 @@ class PointTool(QgsMapToolEdit):
         # remove last anchor
         if self.anchors:
             self.anchors.pop()
+
+        if undo_edit:
+            # it's a very ugly way of triggering single undo event
+            self.iface.editMenu().actions()[0].trigger()
 
         if redraw:
             self.update_rubber_band()
