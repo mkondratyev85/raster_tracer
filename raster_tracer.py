@@ -252,6 +252,8 @@ class RasterTracer:
         self.last_maptool = self.iface.mapCanvas().mapTool()
 
         self.dockwidget.checkBoxSmooth.stateChanged.connect(self.checkBoxSmooth_changed)
+        self.dockwidget.checkBoxSmooth.setChecked(True)
+
 
     def raster_layer_changed(self):
         self.tool_identify.raster_layer_has_changed(self.dockwidget.mMapLayerComboBox.currentLayer())
