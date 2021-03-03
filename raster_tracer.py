@@ -192,7 +192,7 @@ class RasterTracer:
 
         self.pluginIsActive = False
 
-        # self.tool_identify.deactivate()
+        self.tool_identify.deactivate()
 
     def unload(self):
         """Removes the plugin menu item and icon from QGIS GUI."""
@@ -209,32 +209,40 @@ class RasterTracer:
 
     # -------------------------------------------------------------------------
 
+    def activate_map_tool(self):
+        ''' Activates map tool'''
+        self.map_canvas.setMapTool(self.tool_identify)
+
     def run(self):
         """Run method that loads and starts the plugin"""
 
-        if not self.pluginIsActive:
-            self.pluginIsActive = True
+        if self.pluginIsActive:
+            self.activate_map_tool()
+            return
 
-            # print "** STARTING RasterTracer"
+        self.pluginIsActive = True
 
-            # dockwidget may not exist if:
-            #    first run of plugin
-            #    removed on close (see self.onClosePlugin method)
-            if self.dockwidget is None:
-                # Create the dockwidget (after translation) and keep reference
-                self.dockwidget = RasterTracerDockWidget()
+        # print "** STARTING RasterTracer"
 
-            # connect to provide cleanup on closing of dockwidget
-            self.dockwidget.closingPlugin.connect(self.onClosePlugin)
+        # dockwidget may not exist if:
+        #    first run of plugin
+        #    removed on close (see self.onClosePlugin method)
+        if self.dockwidget is None:
+            # Create the dockwidget (after translation) and keep reference
+            self.dockwidget = RasterTracerDockWidget()
 
-            # show the dockwidget
-            self.iface.addDockWidget(Qt.LeftDockWidgetArea, self.dockwidget)
-            self.dockwidget.show()
+        # connect to provide cleanup on closing of dockwidget
+        self.dockwidget.closingPlugin.connect(self.onClosePlugin)
+
+        # show the dockwidget
+        self.iface.addDockWidget(Qt.LeftDockWidgetArea, self.dockwidget)
+        self.dockwidget.show()
 
         self.map_canvas = self.iface.mapCanvas()
         # vlayer = self.iface.layerTreeView().selectedLayers()[0]
         self.tool_identify = PointTool(self.map_canvas, self.iface, self.turn_off_snap)
-        self.map_canvas.setMapTool(self.tool_identify)
+        # self.map_canvas.setMapTool(self.tool_identify)
+        self.activate_map_tool()
 
         excluded_layers = [l for l in QgsProject().instance().mapLayers().values() 
                                                     if isinstance(l, QgsVectorLayer)]
