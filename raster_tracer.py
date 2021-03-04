@@ -23,7 +23,7 @@
 """
 from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication, Qt
 from qgis.PyQt.QtGui import QIcon
-from qgis.PyQt.QtWidgets import QAction
+from qgis.PyQt.QtWidgets import QAction, QApplication
 # Initialize Qt resources from file resources.py
 from .resources import *
 
@@ -193,6 +193,8 @@ class RasterTracer:
         self.pluginIsActive = False
 
         self.tool_identify.deactivate()
+        QApplication.restoreOverrideCursor()
+        self.map_canvas.setMapTool(self.last_maptool)
 
     def unload(self):
         """Removes the plugin menu item and icon from QGIS GUI."""
@@ -211,6 +213,7 @@ class RasterTracer:
 
     def activate_map_tool(self):
         ''' Activates map tool'''
+        self.last_maptool = self.iface.mapCanvas().mapTool()
         self.map_canvas.setMapTool(self.tool_identify)
 
     def run(self):
@@ -257,7 +260,7 @@ class RasterTracer:
         self.dockwidget.mQgsSpinBox.valueChanged.connect(self.checkBoxSnap_changed)
 
         self.map_canvas.setMapTool(self.tool_identify)
-        self.last_maptool = self.iface.mapCanvas().mapTool()
+        # self.last_maptool = self.iface.mapCanvas().mapTool()
 
         self.dockwidget.checkBoxSmooth.stateChanged.connect(self.checkBoxSmooth_changed)
         self.dockwidget.checkBoxSmooth.setChecked(True)
