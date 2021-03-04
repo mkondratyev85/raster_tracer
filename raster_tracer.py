@@ -262,6 +262,9 @@ class RasterTracer:
         self.dockwidget.checkBoxSmooth.stateChanged.connect(self.checkBoxSmooth_changed)
         self.dockwidget.checkBoxSmooth.setChecked(True)
 
+        self.dockwidget.checkBoxSnap2.stateChanged.connect(self.checkBoxSnap2_changed)
+        self.dockwidget.SpinBoxSnap.valueChanged.connect(self.checkBoxSnap2_changed)
+
 
     def raster_layer_changed(self):
         self.tool_identify.raster_layer_has_changed(self.dockwidget.mMapLayerComboBox.currentLayer())
@@ -278,6 +281,16 @@ class RasterTracer:
         else:
             self.dockwidget.mQgsSpinBox.setEnabled(False)
             self.tool_identify.snap_tolerance_changed(None)
+
+    def checkBoxSnap2_changed(self):
+        if self.dockwidget.checkBoxSnap2.isChecked():
+            self.dockwidget.SpinBoxSnap.setEnabled(True)
+            snap_tolerance = self.dockwidget.SpinBoxSnap.value()
+            self.tool_identify.snap2_tolerance_changed(snap_tolerance)
+        else:
+            self.dockwidget.SpinBoxSnap.setEnabled(False)
+            self.tool_identify.snap2_tolerance_changed(None)
+
 
     def turn_off_snap(self):
         self.dockwidget.checkBoxSnap.nextCheckState()

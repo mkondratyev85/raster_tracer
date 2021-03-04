@@ -69,7 +69,8 @@ class State:
                 )
             return False
 
-        x1, y1 = self.pointtool.snap_to_itself(x1, y1)
+        if self.pointtool.snap2_tolerance:
+            x1, y1 = self.pointtool.snap_to_itself(x1, y1, self.pointtool.snap2_tolerance)
         i1, j1 = self.pointtool.to_indexes(x1, y1)
         self.pointtool.add_anchor_points(x1, y1, i1, j1)
 

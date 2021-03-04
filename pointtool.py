@@ -118,7 +118,8 @@ class PointTool(QgsMapToolEdit):
 
         self.rlayer = None
         self.grid_changed = None
-        self.snap_tolerance = None
+        self.snap_tolerance = None # snap to color
+        self.snap2_tolerance = None # snap to itself
         self.vlayer = None
         self.grid = None
         self.sample = None
@@ -171,6 +172,13 @@ class PointTool(QgsMapToolEdit):
             self.marker_snap.hide()
         else:
             self.marker_snap.show()
+
+    def snap2_tolerance_changed(self, snap_tolerance):
+        self.snap2_tolerance = snap_tolerance**2
+        # if snap_tolerance is None:
+        #     self.marker_snap.hide()
+        # else:
+        #     self.marker_snap.show()
 
     def trace_color_changed(self, color):
         r, g, b = self.sample
@@ -400,7 +408,7 @@ class PointTool(QgsMapToolEdit):
                 y1=y1,
                 )
 
-    def snap_to_itself(self, x, y, sq_tolerance=10):
+    def snap_to_itself(self, x, y, sq_tolerance=1):
         '''
         finds a nearest segment line to the current vlayer
         '''
@@ -411,7 +419,7 @@ class PointTool(QgsMapToolEdit):
         # feature = vlayer.getFeature(nearest_feature_id)
         for feature in vlayer.getFeatures():
             closest_point, _, _, _, sq_distance = feature.geometry().closestVertex(pt)
-            if sq_distance < sq_tolerance**2:
+            if sq_distance < sq_tolerance:
                 return closest_point.x(), closest_point.y()
         return x, y
 
