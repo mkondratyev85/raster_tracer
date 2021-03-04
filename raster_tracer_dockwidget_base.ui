@@ -15,6 +15,31 @@
   </property>
   <widget class="QWidget" name="dockWidgetContents">
    <layout class="QGridLayout" name="gridLayout">
+
+    <item row="7" column="0">
+     <widget class="QCheckBox" name="checkBoxSnap2">
+      <property name="enabled">
+       <bool>true</bool>
+      </property>
+      <property name="text">
+       <string>Snap to vector layer</string>
+      </property>
+     </widget>
+    </item>
+    <item row="7" column="1">
+     <widget class="QgsSpinBox" name="SpinBoxSnap">
+      <property name="enabled">
+       <bool>false</bool>
+      </property>
+      <property name="minimum">
+       <number>1</number>
+      </property>
+      <property name="value">
+       <number>1</number>
+      </property>
+     </widget>
+    </item>
+
     <item row="5" column="0">
      <widget class="QCheckBox" name="checkBoxSnap">
       <property name="enabled">
