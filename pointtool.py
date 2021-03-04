@@ -8,7 +8,7 @@ import numpy as np
 
 from qgis.core import QgsPointXY, QgsPoint, QgsGeometry, QgsFeature, \
                       QgsVectorLayer, QgsProject, QgsWkbTypes, QgsApplication, \
-                      QgsRectangle
+                      QgsRectangle, QgsSpatialIndex
 from qgis.gui import QgsMapToolEmitPoint, QgsMapToolEdit, \
                      QgsRubberBand, QgsVertexMarker, QgsMapTool
 from qgis.PyQt.QtCore import Qt
@@ -135,6 +135,8 @@ class PointTool(QgsMapToolEdit):
 
         self.change_state(WaitingFirstPointState)
 
+        self.last_vlayer = None
+
     def display_message(self,
                         title,
                         message,
@@ -184,7 +186,13 @@ class PointTool(QgsMapToolEdit):
         try:
             vlayer = self.iface.layerTreeView().selectedLayers()[0]
             if isinstance(vlayer, QgsVectorLayer):
-                if  vlayer.wkbType() == QgsWkbTypes.MultiLineString:
+                if vlayer.wkbType() == QgsWkbTypes.MultiLineString:
+                    # if self.last_vlayer:
+                    #     if vlayer != self.last_vlayer:
+                    #         self.create_spatial_index_for_vlayer(vlayer)
+                    # else:
+                    #     self.create_spatial_index_for_vlayer(vlayer)
+                    # self.last_vlayer = vlayer
                     return vlayer
                 else:
                     self.display_message(
@@ -392,6 +400,20 @@ class PointTool(QgsMapToolEdit):
                 y1=y1,
                 )
 
+    def snap_to_itself(self, x, y, sq_tolerance=10):
+        '''
+        finds a nearest segment line to the current vlayer
+        '''
+
+        pt = QgsPointXY(x, y)
+        # nearest_feature_id = self.spIndex.nearestNeighbor(pt, 1, tolerance)[0]
+        vlayer = self.get_current_vector_layer()
+        # feature = vlayer.getFeature(nearest_feature_id)
+        for feature in vlayer.getFeatures():
+            closest_point, _, _, _, sq_distance = feature.geometry().closestVertex(pt)
+            if sq_distance < sq_tolerance**2:
+                return closest_point.x(), closest_point.y()
+        return x, y
 
     def snap(self, i, j):
         if self.snap_tolerance is None:
@@ -605,6 +627,24 @@ class PointTool(QgsMapToolEdit):
         newRect = QgsRectangle(xMin, yMin, xMax, yMax)
         self.iface.mapCanvas().setExtent(newRect)
 
+    def add_last_feature_to_spindex(self, vlayer):
+        '''
+        Adds last feature to spatial index
+        '''
+        features = list(vlayer.getFeatures())
+        last_feature = features[-1]
+        self.spIndex.insertFeature(last_feature)
+
+    def create_spatial_index_for_vlayer(self, vlayer):
+        '''
+        Creates spatial index for the vlayer
+        '''
+
+        self.spIndex = QgsSpatialIndex()
+        # features = [f for f in vlayer]
+        self.spIndex.addFeatures(vlayer.getFeatures())
+
+
 
 def add_to_last_feature(vlayer, points):
     '''
@@ -625,7 +665,9 @@ def add_feature_to_vlayer(vlayer, points):
     '''
     Adds new line feature to the vlayer
     '''
+
     feat = QgsFeature(vlayer.fields())
     polyline = [QgsPoint(x, y) for x, y in points]
     feat.setGeometry(QgsGeometry.fromPolyline(polyline))
     vlayer.addFeature(feat)
+

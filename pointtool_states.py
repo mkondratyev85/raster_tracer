@@ -69,6 +69,7 @@ class State:
                 )
             return False
 
+        x1, y1 = self.pointtool.snap_to_itself(x1, y1)
         i1, j1 = self.pointtool.to_indexes(x1, y1)
         self.pointtool.add_anchor_points(x1, y1, i1, j1)
 
@@ -132,6 +133,9 @@ class WaitingMiddlePointState(State):
     def click_rmb(self, mouseEvent, vlayer):
 
         super().click_rmb(mouseEvent, vlayer)
+
+        # # add last feature to spatial index to perform fast search of closet points
+        # self.pointtool.add_last_feature_to_spindex(vlayer)
 
 
 class AutoFollowingLineState(State):
