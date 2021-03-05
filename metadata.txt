@@ -20,7 +20,10 @@ repository=https://github.com/mkondratyev85/raster_tracer/
 
 hasProcessingProvider=no
 # Uncomment the following line and add your changelog:
-changelog=0.3.0
+changelog=0.3.1
+    -- Fixed bug with opening and closing the plugin
+    -- Added option of snapping to the vector layer
+    0.3.0
     -- Tracing is on the background. No freezing of QGgis anymore (#22)
     0.2.0
     -- Make smoothing optional (#15)
