@@ -23,7 +23,7 @@
 """
 from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication, Qt
 from qgis.PyQt.QtGui import QIcon
-from qgis.PyQt.QtWidgets import QAction
+from qgis.PyQt.QtWidgets import QAction, QApplication
 # Initialize Qt resources from file resources.py
 from .resources import *
 
@@ -192,7 +192,9 @@ class RasterTracer:
 
         self.pluginIsActive = False
 
-        # self.tool_identify.deactivate()
+        self.tool_identify.deactivate()
+        QApplication.restoreOverrideCursor()
+        self.map_canvas.setMapTool(self.last_maptool)
 
     def unload(self):
         """Removes the plugin menu item and icon from QGIS GUI."""
@@ -209,32 +211,41 @@ class RasterTracer:
 
     # -------------------------------------------------------------------------
 
+    def activate_map_tool(self):
+        ''' Activates map tool'''
+        self.last_maptool = self.iface.mapCanvas().mapTool()
+        self.map_canvas.setMapTool(self.tool_identify)
+
     def run(self):
         """Run method that loads and starts the plugin"""
 
-        if not self.pluginIsActive:
-            self.pluginIsActive = True
+        if self.pluginIsActive:
+            self.activate_map_tool()
+            return
 
-            # print "** STARTING RasterTracer"
+        self.pluginIsActive = True
 
-            # dockwidget may not exist if:
-            #    first run of plugin
-            #    removed on close (see self.onClosePlugin method)
-            if self.dockwidget is None:
-                # Create the dockwidget (after translation) and keep reference
-                self.dockwidget = RasterTracerDockWidget()
+        # print "** STARTING RasterTracer"
 
-            # connect to provide cleanup on closing of dockwidget
-            self.dockwidget.closingPlugin.connect(self.onClosePlugin)
+        # dockwidget may not exist if:
+        #    first run of plugin
+        #    removed on close (see self.onClosePlugin method)
+        if self.dockwidget is None:
+            # Create the dockwidget (after translation) and keep reference
+            self.dockwidget = RasterTracerDockWidget()
 
-            # show the dockwidget
-            self.iface.addDockWidget(Qt.LeftDockWidgetArea, self.dockwidget)
-            self.dockwidget.show()
+        # connect to provide cleanup on closing of dockwidget
+        self.dockwidget.closingPlugin.connect(self.onClosePlugin)
+
+        # show the dockwidget
+        self.iface.addDockWidget(Qt.LeftDockWidgetArea, self.dockwidget)
+        self.dockwidget.show()
 
         self.map_canvas = self.iface.mapCanvas()
         # vlayer = self.iface.layerTreeView().selectedLayers()[0]
         self.tool_identify = PointTool(self.map_canvas, self.iface, self.turn_off_snap)
-        self.map_canvas.setMapTool(self.tool_identify)
+        # self.map_canvas.setMapTool(self.tool_identify)
+        self.activate_map_tool()
 
         excluded_layers = [l for l in QgsProject().instance().mapLayers().values() 
                                                     if isinstance(l, QgsVectorLayer)]
@@ -249,10 +260,13 @@ class RasterTracer:
         self.dockwidget.mQgsSpinBox.valueChanged.connect(self.checkBoxSnap_changed)
 
         self.map_canvas.setMapTool(self.tool_identify)
-        self.last_maptool = self.iface.mapCanvas().mapTool()
+        # self.last_maptool = self.iface.mapCanvas().mapTool()
 
         self.dockwidget.checkBoxSmooth.stateChanged.connect(self.checkBoxSmooth_changed)
         self.dockwidget.checkBoxSmooth.setChecked(True)
+
+        self.dockwidget.checkBoxSnap2.stateChanged.connect(self.checkBoxSnap2_changed)
+        self.dockwidget.SpinBoxSnap.valueChanged.connect(self.checkBoxSnap2_changed)
 
 
     def raster_layer_changed(self):
@@ -270,6 +284,16 @@ class RasterTracer:
         else:
             self.dockwidget.mQgsSpinBox.setEnabled(False)
             self.tool_identify.snap_tolerance_changed(None)
+
+    def checkBoxSnap2_changed(self):
+        if self.dockwidget.checkBoxSnap2.isChecked():
+            self.dockwidget.SpinBoxSnap.setEnabled(True)
+            snap_tolerance = self.dockwidget.SpinBoxSnap.value()
+            self.tool_identify.snap2_tolerance_changed(snap_tolerance)
+        else:
+            self.dockwidget.SpinBoxSnap.setEnabled(False)
+            self.tool_identify.snap2_tolerance_changed(None)
+
 
     def turn_off_snap(self):
         self.dockwidget.checkBoxSnap.nextCheckState()
