@@ -14,6 +14,7 @@ from qgis.gui import QgsMapToolEmitPoint, QgsMapToolEdit, \
 from qgis.PyQt.QtCore import Qt
 from qgis.PyQt.QtGui import QColor
 from qgis.core import Qgis
+from qgis.core import QgsCoordinateTransform
 
 
 from .astar import FindPathTask, FindPathFunction
@@ -498,17 +499,25 @@ class PointTool(QgsMapToolEdit):
         Draws a path after tracer found it.
         '''
 
+        transform = QgsCoordinateTransform(QgsProject.instance().crs(),
+                                           vlayer.crs(),
+                                           QgsProject.instance())
         if was_tracing:
             if self.smooth_line:
                 path = smooth(path, size=5)
                 path = simplify(path)
+            vlayer = self.get_current_vector_layer()
             current_last_point = self.to_coords(*path[-1])
-            path_ref = [self.to_coords_provider(i, j) for i, j in path]
-        else:
+            path_ref = [transform.transform(*self.to_coords_provider(i, j)) for i, j in path]
             x0, y0, _, _ = self.anchors[-2]
-            path_ref = [self.to_coords_provider2(x0, y0),
-                        self.to_coords_provider2(x1, y1)]
+            last_point = transform.transform(*self.to_coords_provider2(x0, y0))
+            path_ref = [last_point] + path_ref[1:]
+        else:
+            x0, y0, _i, _j = self.anchors[-2]
             current_last_point = (x1, y1)
+            path_ref = [transform.transform(*self.to_coords_provider2(x0, y0)),
+                        transform.transform(*self.to_coords_provider2(x1, y1))]
+
 
         self.ready = False
         if len(self.anchors) == 2:
@@ -516,9 +525,6 @@ class PointTool(QgsMapToolEdit):
             add_feature_to_vlayer(vlayer, path_ref)
             vlayer.endEditCommand()
         else:
-            x0, y0, _, _ = self.anchors[-2]
-            last_point = self.to_coords_provider2(x0, y0)
-            path_ref = [last_point] + path_ref[1:]
             vlayer.beginEditCommand("Adding new segment to the line")
             add_to_last_feature(vlayer, path_ref)
             vlayer.endEditCommand()
