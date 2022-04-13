@@ -40,11 +40,23 @@ tracing varies over the map.
 Right now the plugin can trace images that have a standard RGB color space. 
 It has no support for any black and white, grey, or indexed images. 
 This means that if your image has an unsupported colorspace, 
-you have to convert the colorspace of your image to RGB first.
+you have to convert the colorspace of your image to RGB first. This can be done in QGis with:
+
+`Processing >> Toolbox >> GDAL >> Raster conversion >> PCT to RGB` 
+
+or directly in the CLI with:
+
+`pct2rgb.py <infile> <outfile> -of GTiff -b 1`
 
 Also in the current version there are some issues when coordinate system 
 of the raster layer differs from the coordinate system of the project.
+It might be useful to convert the image that will be processed to the same coordinate
+system used by the QGis project before importing. For example, the command bellow
+converts a geotiff image (already georeferenced) to an `EPSG:4326` coordinate system.
 
+`gdalwarp -t_srs EPSG:4326 -of GTiff infile.tif outfile.tif`
+
+__NOTE__: `pct2rgb.py` and `gdalwarp` are part of the GDAL package.
 
 ## Useful keys
 
