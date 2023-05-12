@@ -128,7 +128,7 @@ class PointTool(QgsMapToolEdit):
         self.tracking_is_active = False
 
         # False = not a polygon
-        self.rubber_band = QgsRubberBand(self.canvas(), False)
+        self.rubber_band = QgsRubberBand(self.canvas(), QgsWkbTypes.LineGeometry)
         self.markers = []
         self.marker_snap = QgsVertexMarker(self.canvas())
         self.marker_snap.setColor(QColor(255, 0, 255))
